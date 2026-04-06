@@ -36,7 +36,7 @@ function makeGetterSetter(originalType, key, algorithm) {
     };
 }
 
-module.exports = function configure(options) {
+module.exports = function createAESPlugin(options) {
     if (!options || !options.key) {
         throw new Error('mongoose-aes-encryption: options.key is required');
     }

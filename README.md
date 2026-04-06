@@ -12,7 +12,7 @@
 
 ## Description
 
-`mongoose-aes-encryption` adds AES encryption to individual Mongoose schema fields with minimal changes to your existing schema definitions — configure the plugin once, apply it to a schema, and flag sensitive fields with `encrypted: true`. All encryption and decryption is fully transparent: your application code reads and writes plain values as usual while MongoDB stores only ciphertext.
+`mongoose-aes-encryption` adds AES encryption to individual Mongoose schema fields with minimal changes to your existing schema definitions — call `createAESPlugin()` once, apply it to a schema, and flag sensitive fields with `encrypted: true`. All encryption and decryption is fully transparent: your application code reads and writes plain values as usual while MongoDB stores only ciphertext.
 
 🔒 [Encrypted schema types](#plugin-setup)
 - String, Number, Date, and Boolean fields supported
@@ -47,8 +47,8 @@ const schema = new mongoose.Schema({
 To encrypt `email` and `salary` at rest, add two lines of setup and one flag per field:
 
 ```javascript
-const configure = require('mongoose-aes-encryption');
-const plugin = configure({ key: process.env.ENCRYPTION_KEY });
+const createAESPlugin = require('mongoose-aes-encryption');
+const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
 
 const schema = new mongoose.Schema({
     username: { type: String },
@@ -96,9 +96,9 @@ const active   = sc.decrypt(doc.active, { key }) === 'true';        // → boole
 
 ### Plugin Setup
 
-#### `configure(options)`
+#### `createAESPlugin(options)`
 
-Configures AES encryption and returns a Mongoose plugin function. Call this once — before defining any schema that uses encrypted fields — and apply the returned plugin to each schema with `schema.plugin()`.
+Creates and returns a Mongoose plugin function that encrypts and decrypts schema fields. Call this once — before defining any schema that uses encrypted fields — and apply the returned plugin to each schema with `schema.plugin()`.
 
 **Parameters:**
 - `options` (Object): Configuration object.
@@ -110,9 +110,9 @@ Configures AES encryption and returns a Mongoose plugin function. Call this once
 **Example:**
 ```javascript
 const mongoose = require('mongoose');
-const configure = require('mongoose-aes-encryption');
+const createAESPlugin = require('mongoose-aes-encryption');
 
-const plugin = configure({ key: process.env.ENCRYPTION_KEY });
+const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
 
 const schema = new mongoose.Schema({
     name:      { type: String },
@@ -156,13 +156,13 @@ npm install mongoose-aes-encryption
 To use the plugin with all defaults (AES-256-GCM), pass only the required key:
 
 ```javascript
-const plugin = configure({ key: process.env.ENCRYPTION_KEY });
+const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
 ```
 
 To customise the algorithm:
 
 ```javascript
-const plugin = configure({
+const plugin = createAESPlugin({
     key:       process.env.ENCRYPTION_KEY,
     algorithm: 'aes-256-gcm'
 });
@@ -176,7 +176,7 @@ Required.
 A 64-character hexadecimal string representing the 32-byte AES encryption key. All schemas that use the returned plugin share this key. Throws at configuration time if missing or if `options` is omitted entirely.
 
 ```javascript
-const plugin = configure({ key: 'a1b2c3d4e5f6...' }); // 64 hex chars
+const plugin = createAESPlugin({ key: 'a1b2c3d4e5f6...' }); // 64 hex chars
 ```
 
 ### `algorithm`
@@ -188,7 +188,7 @@ Encryption algorithm to use. `'aes-256-gcm'` (default) is an authenticated ciphe
 
 ```javascript
 // Backwards compatibility only
-const plugin = configure({ key: process.env.ENCRYPTION_KEY, algorithm: 'aes-256-cbc' });
+const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY, algorithm: 'aes-256-cbc' });
 ```
 
 ---
@@ -207,11 +207,11 @@ const plugin = configure({ key: process.env.ENCRYPTION_KEY, algorithm: 'aes-256-
    export ENCRYPTION_KEY=<your-64-char-hex-key>
    ```
 
-3. Call `configure()` once, before any schema that uses encrypted fields is defined:
+3. Call `createAESPlugin()` once, before any schema that uses encrypted fields is defined:
 
    ```javascript
-   const configure = require('mongoose-aes-encryption');
-   const plugin = configure({ key: process.env.ENCRYPTION_KEY });
+   const createAESPlugin = require('mongoose-aes-encryption');
+   const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
    ```
 
 4. Apply the plugin to each schema and mark sensitive fields with `encrypted: true`:

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const sc = require('@tsmx/string-crypto');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const configure = require('../mongoose-aes-encryption');
+const createAESPlugin = require('../mongoose-aes-encryption');
 
 describe('mongoose-aes-encryption EncryptedBoolean test suite', () => {
 
@@ -13,7 +13,7 @@ describe('mongoose-aes-encryption EncryptedBoolean test suite', () => {
     beforeAll(async () => {
         mongoServer = await MongoMemoryServer.create({ dbName: 'aes-encryption-boolean' });
         await mongoose.connect(mongoServer.getUri());
-        const plugin = configure({ key: testKey, algorithm: 'aes-256-gcm' });
+        const plugin = createAESPlugin({ key: testKey, algorithm: 'aes-256-gcm' });
         const schema = new mongoose.Schema({
             id: { type: String, required: true },
             active: { type: Boolean, encrypted: true },

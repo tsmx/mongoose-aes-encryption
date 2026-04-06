@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const configure = require('../mongoose-aes-encryption');
+const createAESPlugin = require('../mongoose-aes-encryption');
 
 describe('mongoose-aes-encryption plugin registration test suite', () => {
 
@@ -18,26 +18,26 @@ describe('mongoose-aes-encryption plugin registration test suite', () => {
         await mongoServer.stop();
     });
 
-    it('tests that configure throws when key is missing', () => {
-        expect(() => configure({})).toThrow('mongoose-aes-encryption: options.key is required');
+    it('tests that createAESPlugin throws when key is missing', () => {
+        expect(() => createAESPlugin({})).toThrow('mongoose-aes-encryption: options.key is required');
     });
 
-    it('tests that configure throws when options are missing entirely', () => {
-        expect(() => configure()).toThrow('mongoose-aes-encryption: options.key is required');
+    it('tests that createAESPlugin throws when options are missing entirely', () => {
+        expect(() => createAESPlugin()).toThrow('mongoose-aes-encryption: options.key is required');
     });
 
-    it('tests that configure throws for an invalid algorithm', () => {
-        expect(() => configure({ key: testKey, algorithm: 'fake-algo' }))
+    it('tests that createAESPlugin throws for an invalid algorithm', () => {
+        expect(() => createAESPlugin({ key: testKey, algorithm: 'fake-algo' }))
             .toThrow('mongoose-aes-encryption: invalid algorithm \'fake-algo\'');
     });
 
-    it('tests that configure returns a valid Mongoose plugin function', () => {
-        const plugin = configure({ key: testKey });
+    it('tests that createAESPlugin returns a valid Mongoose plugin function', () => {
+        const plugin = createAESPlugin({ key: testKey });
         expect(typeof plugin).toStrictEqual('function');
     });
 
     it('tests that aes-256-gcm is used as the default algorithm', async () => {
-        const plugin = configure({ key: testKey });
+        const plugin = createAESPlugin({ key: testKey });
         const schema = new mongoose.Schema({ label: { type: String, encrypted: true } });
         schema.plugin(plugin);
         const Item = mongoose.model('Item', schema);
@@ -50,7 +50,7 @@ describe('mongoose-aes-encryption plugin registration test suite', () => {
     });
 
     it('tests that aes-256-cbc is accepted as algorithm', async () => {
-        const plugin = configure({ key: testKey, algorithm: 'aes-256-cbc' });
+        const plugin = createAESPlugin({ key: testKey, algorithm: 'aes-256-cbc' });
         const schema = new mongoose.Schema({ label: { type: String, encrypted: true } });
         schema.plugin(plugin);
         const Widget = mongoose.model('Widget', schema);
