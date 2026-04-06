@@ -6,9 +6,11 @@
 
 # [**mongoose-aes-encryption**](https://github.com/tsmx/mongoose-aes-encryption)
 
-> Easy to use AES-256-GCM encryption-at-rest plugin for Mongoose schema fields with built-in tamper detection. Also provides AES-256-CBC for backwards compatibility.
+> Easy to use AES-256-GCM encryption-at-rest plugin for Mongoose with built-in tamper detection.
 
 `mongoose-aes-encryption` adds AES encryption to individual Mongoose schema fields with minimal changes to your existing schema definitions — call `createAESPlugin()` once, apply it to a schema, and simply flag sensitive fields with `encrypted: true`. All encryption and decryption is fully transparent: your application code reads and writes plain values as usual while MongoDB stores only ciphertext.
+
+For backwards compatibility, AES-256-CBC can also be used.
 
 ## Key features
 
@@ -42,7 +44,7 @@ const schema = new mongoose.Schema({
 });
 ```
 
-To encrypt `email` and `salary` at rest, add two lines of setup and one flag per field:
+To encrypt `email` and `salary` at rest using AES-GCM, add two lines of setup and one flag per field:
 
 ```javascript
 const createAESPlugin = require('mongoose-aes-encryption');
