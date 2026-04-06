@@ -126,8 +126,11 @@ schema.plugin(plugin);
 const Employee = mongoose.model('Employee', schema);
 
 const emp = new Employee({
-    name: 'Bob', email: 'bob@example.com',
-    birthDate: new Date('1990-01-01'), salary: 60000, active: true
+    name: 'Bob', 
+    email: 'bob@example.com',
+    birthDate: new Date('1990-01-01'), 
+    salary: 60000, 
+    active: true
 });
 await emp.save();
 // Result: name stored as plain text; all other fields stored as AES-256-GCM ciphertext
@@ -146,8 +149,6 @@ const found = await Employee.findById(emp._id);
 ```bash
 npm install mongoose-aes-encryption
 ```
-
-**Peer dependencies:** `mongoose ^9`
 
 ---
 
