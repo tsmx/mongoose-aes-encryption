@@ -33,7 +33,7 @@ describe('mongoose-aes-encryption plugin registration test suite', () => {
 
     it('tests that createAESPlugin returns a valid Mongoose plugin function', () => {
         const plugin = createAESPlugin({ key: testKey });
-        expect(typeof plugin).toStrictEqual('function');
+        expect(plugin).toEqual(expect.any(Function));
     });
 
     it('tests that aes-256-gcm is used as the default algorithm', async () => {

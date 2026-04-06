@@ -64,9 +64,9 @@ describe('mongoose-aes-encryption EncryptedNumber test suite', () => {
         product.stock = 200;
         const saved = await product.save();
         expect(saved.price).toStrictEqual(5);
-        expect(Number.isInteger(saved.price)).toBe(true);
+        expect(Number.isInteger(saved.price)).toStrictEqual(true);
         expect(saved.stock).toStrictEqual(200);
-        expect(Number.isInteger(saved.stock)).toBe(true);
+        expect(Number.isInteger(saved.stock)).toStrictEqual(true);
     });
 
     it('tests a successful document update', async () => {
