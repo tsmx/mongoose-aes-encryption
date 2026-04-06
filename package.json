@@ -1,7 +1,7 @@
 {
   "name": "mongoose-aes-encryption",
   "version": "1.0.0",
-  "description": "Mongoose plugin adding AES-GCM and AES-CBC encryption for String, Number, Date and Boolean to schemas.",
+  "description": "Mongoose plugin adding AES-256-GCM encryption at rest for String, Number, Date and Boolean fields to schemas.",
   "main": "mongoose-aes-encryption.js",
   "engines": {
     "node": ">=18.0.0",
