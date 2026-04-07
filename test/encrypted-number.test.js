@@ -203,4 +203,19 @@ describe('mongoose-aes-encryption EncryptedNumber array test suite', () => {
         expect(lean.scores.map(elem => parseFloat(sc.decrypt(elem, { key: testKey })))).toStrictEqual([10, 20]);
     });
 
+    it('tests a successful document creation and retrieval with an array containing null elements', async () => {
+        const sensor = new Sensor();
+        sensor.id = 'id-null-elem';
+        sensor.readings = [1.1, null, 3.3];
+        sensor.scores = [10];
+        const saved = await sensor.save();
+        expect(saved.readings).toStrictEqual([1.1, null, 3.3]);
+        const retrieved = await Sensor.findOne({ id: 'id-null-elem' });
+        expect(retrieved.readings).toStrictEqual([1.1, null, 3.3]);
+        const lean = await Sensor.findOne({ id: 'id-null-elem' }).lean();
+        expect(lean.readings[0].split('|').length).toStrictEqual(3);
+        expect(lean.readings[1]).toBeNull();
+        expect(lean.readings[2].split('|').length).toStrictEqual(3);
+    });
+
 });

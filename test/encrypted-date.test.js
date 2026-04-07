@@ -200,4 +200,23 @@ describe('mongoose-aes-encryption EncryptedDate array test suite', () => {
             .toStrictEqual([dateC.toISOString()]);
     });
 
+    it('tests a successful document creation and retrieval with an array containing null elements', async () => {
+        const project = new Project();
+        project.id = 'id-null-elem';
+        project.milestones = [dateA, null, dateB];
+        project.deadlines = [dateC];
+        const saved = await project.save();
+        expect(saved.milestones[0].toISOString()).toStrictEqual(dateA.toISOString());
+        expect(saved.milestones[1]).toBeNull();
+        expect(saved.milestones[2].toISOString()).toStrictEqual(dateB.toISOString());
+        const retrieved = await Project.findOne({ id: 'id-null-elem' });
+        expect(retrieved.milestones[0].toISOString()).toStrictEqual(dateA.toISOString());
+        expect(retrieved.milestones[1]).toBeNull();
+        expect(retrieved.milestones[2].toISOString()).toStrictEqual(dateB.toISOString());
+        const lean = await Project.findOne({ id: 'id-null-elem' }).lean();
+        expect(lean.milestones[0].split('|').length).toStrictEqual(3);
+        expect(lean.milestones[1]).toBeNull();
+        expect(lean.milestones[2].split('|').length).toStrictEqual(3);
+    });
+
 });

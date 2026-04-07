@@ -204,4 +204,19 @@ describe('mongoose-aes-encryption EncryptedBoolean array test suite', () => {
         expect(lean.permissions.map(elem => sc.decrypt(elem, { key: testKey }) === 'true')).toStrictEqual([false, false]);
     });
 
+    it('tests a successful document creation and retrieval with an array containing null elements', async () => {
+        const device = new Device();
+        device.id = 'id-null-elem';
+        device.features = [true, null, false];
+        device.permissions = [true];
+        const saved = await device.save();
+        expect(saved.features).toStrictEqual([true, null, false]);
+        const retrieved = await Device.findOne({ id: 'id-null-elem' });
+        expect(retrieved.features).toStrictEqual([true, null, false]);
+        const lean = await Device.findOne({ id: 'id-null-elem' }).lean();
+        expect(lean.features[0].split('|').length).toStrictEqual(3);
+        expect(lean.features[1]).toBeNull();
+        expect(lean.features[2].split('|').length).toStrictEqual(3);
+    });
+
 });

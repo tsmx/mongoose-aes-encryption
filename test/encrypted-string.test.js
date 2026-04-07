@@ -206,4 +206,19 @@ describe('mongoose-aes-encryption EncryptedString array test suite', () => {
         expect(lean.aliases.map(elem => sc.decrypt(elem, { key: testKey }))).toStrictEqual(['foo', 'bar']);
     });
 
+    it('tests a successful document creation and retrieval with an array containing null elements', async () => {
+        const article = new Article();
+        article.id = 'id-null-elem';
+        article.tags = ['first', null, 'third'];
+        article.aliases = ['only'];
+        const saved = await article.save();
+        expect(saved.tags).toStrictEqual(['first', null, 'third']);
+        const retrieved = await Article.findOne({ id: 'id-null-elem' });
+        expect(retrieved.tags).toStrictEqual(['first', null, 'third']);
+        const lean = await Article.findOne({ id: 'id-null-elem' }).lean();
+        expect(lean.tags[0].split('|').length).toStrictEqual(3);
+        expect(lean.tags[1]).toBeNull();
+        expect(lean.tags[2].split('|').length).toStrictEqual(3);
+    });
+
 });
