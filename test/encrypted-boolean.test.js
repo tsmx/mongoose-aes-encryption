@@ -104,3 +104,104 @@ describe('mongoose-aes-encryption EncryptedBoolean test suite', () => {
     });
 
 });
+
+describe('mongoose-aes-encryption EncryptedBoolean array test suite', () => {
+
+    const testKey = '9af7d400be4705147dc724db25bfd2513aa11d6013d7bf7bdb2bfe050593bd0f';
+
+    var mongoServer = null;
+    var Device = null;
+
+    beforeAll(async () => {
+        mongoServer = await MongoMemoryServer.create({ dbName: 'aes-encryption-boolean-array' });
+        await mongoose.connect(mongoServer.getUri());
+        const plugin = createAESPlugin({ key: testKey, algorithm: 'aes-256-gcm' });
+        const schema = new mongoose.Schema({
+            id: { type: String, required: true },
+            features: { type: [Boolean], encrypted: true },
+            permissions: { type: [Boolean], encrypted: true }
+        });
+        schema.plugin(plugin);
+        Device = mongoose.model('Device', schema);
+    });
+
+    afterAll(async () => {
+        await mongoose.connection.close();
+        await mongoServer.stop();
+    });
+
+    beforeEach(async () => {
+        const testDevice = new Device();
+        testDevice.id = 'id-test';
+        testDevice.features = [true, false, true];
+        testDevice.permissions = [false, false];
+        await testDevice.save();
+    });
+
+    afterEach(async () => {
+        await Device.deleteMany();
+    });
+
+    it('tests a successful document creation', async () => {
+        const device = new Device();
+        device.id = 'id-1';
+        device.features = [true, true];
+        device.permissions = [false, true, false];
+        const saved = await device.save();
+        expect(saved).toBeDefined();
+        expect(saved._id).toBeDefined();
+        expect(saved.features).toStrictEqual([true, true]);
+        expect(saved.permissions).toStrictEqual([false, true, false]);
+        const lean = await Device.findById(saved._id).lean();
+        expect(Array.isArray(lean.features)).toStrictEqual(true);
+        lean.features.forEach(elem => expect(elem.split('|').length).toStrictEqual(3));
+        expect(Array.isArray(lean.permissions)).toStrictEqual(true);
+        lean.permissions.forEach(elem => expect(elem.split('|').length).toStrictEqual(3));
+    });
+
+    it('tests a successful document update', async () => {
+        const device = await Device.findOne({ id: 'id-test' });
+        expect(device).toBeDefined();
+        expect(device.features).toStrictEqual([true, false, true]);
+        expect(device.permissions).toStrictEqual([false, false]);
+        device.features = [false];
+        await device.save();
+        const updated = await Device.findOne({ id: 'id-test' });
+        expect(updated.features).toStrictEqual([false]);
+        expect(updated.permissions).toStrictEqual([false, false]);
+    });
+
+    it('tests a successful document creation and retrieval with a null field', async () => {
+        const device = new Device();
+        device.id = 'id-null';
+        device.features = null;
+        device.permissions = [true];
+        const saved = await device.save();
+        expect(saved.features).toStrictEqual(null);
+        expect(saved.permissions).toStrictEqual([true]);
+        const retrieved = await Device.findOne({ id: 'id-null' });
+        expect(retrieved.features).toStrictEqual(null);
+        expect(retrieved.permissions).toStrictEqual([true]);
+    });
+
+    it('tests a successful document creation and retrieval with an empty array', async () => {
+        const device = new Device();
+        device.id = 'id-empty';
+        device.features = [];
+        device.permissions = [true];
+        const saved = await device.save();
+        expect(saved.features).toStrictEqual([]);
+        const retrieved = await Device.findOne({ id: 'id-empty' });
+        expect(retrieved.features).toStrictEqual([]);
+        expect(retrieved.permissions).toStrictEqual([true]);
+    });
+
+    it('tests a successful manual decryption of a document from a lean query', async () => {
+        const lean = await Device.findOne({ id: 'id-test' }).lean();
+        expect(Array.isArray(lean.features)).toStrictEqual(true);
+        lean.features.forEach(elem => expect(elem.split('|').length).toStrictEqual(3));
+        expect(lean.features.map(elem => sc.decrypt(elem, { key: testKey }) === 'true')).toStrictEqual([true, false, true]);
+        expect(lean.permissions.map(elem => sc.decrypt(elem, { key: testKey }) === 'true')).toStrictEqual([false, false]);
+    });
+
+});

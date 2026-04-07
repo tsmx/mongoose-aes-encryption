@@ -106,3 +106,104 @@ describe('mongoose-aes-encryption EncryptedString test suite', () => {
     });
 
 });
+
+describe('mongoose-aes-encryption EncryptedString array test suite', () => {
+
+    const testKey = '9af7d400be4705147dc724db25bfd2513aa11d6013d7bf7bdb2bfe050593bd0f';
+
+    var mongoServer = null;
+    var Article = null;
+
+    beforeAll(async () => {
+        mongoServer = await MongoMemoryServer.create({ dbName: 'aes-encryption-string-array' });
+        await mongoose.connect(mongoServer.getUri());
+        const plugin = createAESPlugin({ key: testKey, algorithm: 'aes-256-gcm' });
+        const schema = new mongoose.Schema({
+            id: { type: String, required: true },
+            tags: { type: [String], encrypted: true },
+            aliases: { type: [String], encrypted: true }
+        });
+        schema.plugin(plugin);
+        Article = mongoose.model('Article', schema);
+    });
+
+    afterAll(async () => {
+        await mongoose.connection.close();
+        await mongoServer.stop();
+    });
+
+    beforeEach(async () => {
+        const testArticle = new Article();
+        testArticle.id = 'id-test';
+        testArticle.tags = ['news', 'tech'];
+        testArticle.aliases = ['foo', 'bar'];
+        await testArticle.save();
+    });
+
+    afterEach(async () => {
+        await Article.deleteMany();
+    });
+
+    it('tests a successful document creation', async () => {
+        const article = new Article();
+        article.id = 'id-1';
+        article.tags = ['sports', 'health'];
+        article.aliases = ['a', 'b', 'c'];
+        const saved = await article.save();
+        expect(saved).toBeDefined();
+        expect(saved._id).toBeDefined();
+        expect(saved.tags).toStrictEqual(['sports', 'health']);
+        expect(saved.aliases).toStrictEqual(['a', 'b', 'c']);
+        const lean = await Article.findById(saved._id).lean();
+        expect(Array.isArray(lean.tags)).toStrictEqual(true);
+        lean.tags.forEach(elem => expect(elem.split('|').length).toStrictEqual(3));
+        expect(Array.isArray(lean.aliases)).toStrictEqual(true);
+        lean.aliases.forEach(elem => expect(elem.split('|').length).toStrictEqual(3));
+    });
+
+    it('tests a successful document update', async () => {
+        const article = await Article.findOne({ id: 'id-test' });
+        expect(article).toBeDefined();
+        expect(article.tags).toStrictEqual(['news', 'tech']);
+        expect(article.aliases).toStrictEqual(['foo', 'bar']);
+        article.tags = ['updated'];
+        await article.save();
+        const updated = await Article.findOne({ id: 'id-test' });
+        expect(updated.tags).toStrictEqual(['updated']);
+        expect(updated.aliases).toStrictEqual(['foo', 'bar']);
+    });
+
+    it('tests a successful document creation and retrieval with a null field', async () => {
+        const article = new Article();
+        article.id = 'id-null';
+        article.tags = null;
+        article.aliases = ['only'];
+        const saved = await article.save();
+        expect(saved.tags).toStrictEqual(null);
+        expect(saved.aliases).toStrictEqual(['only']);
+        const retrieved = await Article.findOne({ id: 'id-null' });
+        expect(retrieved.tags).toStrictEqual(null);
+        expect(retrieved.aliases).toStrictEqual(['only']);
+    });
+
+    it('tests a successful document creation and retrieval with an empty array', async () => {
+        const article = new Article();
+        article.id = 'id-empty';
+        article.tags = [];
+        article.aliases = ['x'];
+        const saved = await article.save();
+        expect(saved.tags).toStrictEqual([]);
+        const retrieved = await Article.findOne({ id: 'id-empty' });
+        expect(retrieved.tags).toStrictEqual([]);
+        expect(retrieved.aliases).toStrictEqual(['x']);
+    });
+
+    it('tests a successful manual decryption of a document from a lean query', async () => {
+        const lean = await Article.findOne({ id: 'id-test' }).lean();
+        expect(Array.isArray(lean.tags)).toStrictEqual(true);
+        lean.tags.forEach(elem => expect(elem.split('|').length).toStrictEqual(3));
+        expect(lean.tags.map(elem => sc.decrypt(elem, { key: testKey }))).toStrictEqual(['news', 'tech']);
+        expect(lean.aliases.map(elem => sc.decrypt(elem, { key: testKey }))).toStrictEqual(['foo', 'bar']);
+    });
+
+});
