@@ -8,9 +8,7 @@
 
 > Easy to use Mongoose plugin providing AES-256-GCM encryption-at-rest with built-in tamper detection.
 
-Adds AES encryption to individual Mongoose schema fields with minimal changes to existing schema definitions. All encryption and decryption is fully transparent: your application reads and writes plain values as usual while MongoDB stores only ciphertext.
-
-For backwards compatibility, AES-256-CBC can also be used. See Options on how to set this explicitly.
+Adds AES-GCM encryption to individual Mongoose schema fields with minimal changes to existing schema definitions. All encryption and decryption is fully transparent: your application reads and writes plain values as usual while MongoDB stores only ciphertext.
 
 ## Key features
 
@@ -31,6 +29,8 @@ For backwards compatibility, AES-256-CBC can also be used. See Options on how to
 - One extra flag per encrypted field (`encrypted: true`) — no other schema changes required
 
 See the [API reference](#api-reference) for full specs and examples.
+
+For backwards compatibility, AES-256-CBC can also be used. See [Options](#options) on how to set this explicitly.
 
 ---
 
