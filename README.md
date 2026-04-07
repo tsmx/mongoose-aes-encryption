@@ -6,7 +6,7 @@
 
 # [**mongoose-aes-encryption**](https://github.com/tsmx/mongoose-aes-encryption)
 
-> Easy to use AES-256-GCM encryption-at-rest plugin for Mongoose with built-in tamper detection.
+> Easy to use Mongoose plugin providing AES-256-GCM encryption-at-rest with built-in tamper detection.
 
 Adds AES encryption to individual Mongoose schema fields with minimal changes to existing schema definitions. All encryption and decryption is fully transparent: your application reads and writes plain values as usual while MongoDB stores only ciphertext.
 
