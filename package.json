@@ -1,6 +1,6 @@
 {
   "name": "mongoose-aes-encryption",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Mongoose plugin adding AES-256-GCM encryption at rest to schemas. Supports sub-schemas and inline nested sub-documents.",
   "main": "mongoose-aes-encryption.js",
   "engines": {
