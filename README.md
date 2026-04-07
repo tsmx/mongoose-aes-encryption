@@ -16,6 +16,9 @@ For backwards compatibility, AES-256-CBC can also be used.
 
 🔒 [Encrypted schema types](#plugin-setup)
 - String, Number, Date, and Boolean fields supported
+- **Arrays** of all four types supported — each element is individually encrypted/decrypted (`type: [String]`, `type: [Number]`, etc.)
+- **Inline nested sub-documents** supported — fields inside inline nested objects (e.g. `address.street`) are detected and rewritten automatically when the plugin is applied to the parent schema
+- **Separate sub-schemas** in a `DocumentArray` supported — apply the plugin to the sub-schema directly before embedding it and every sub-document instance transparently encrypts/decrypts its fields
 - Transparent encryption on every save, transparent decryption on every read
 - `null` values pass through unencrypted
 
@@ -40,11 +43,12 @@ Suppose you have the following Mongoose schema with sensitive fields:
 const schema = new mongoose.Schema({
     username: { type: String },
     email:    { type: String },
-    salary:   { type: Number }
+    salary:   { type: Number },
+    roles:    { type: [String] }
 });
 ```
 
-To encrypt `email` and `salary` at rest using AES-GCM, add two lines of setup and one flag per field:
+To encrypt `email`, `salary`, and `roles` at rest using AES-GCM, add two lines of setup and one flag per field:
 
 ```javascript
 const createAESPlugin = require('mongoose-aes-encryption');
@@ -52,8 +56,9 @@ const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
 
 const schema = new mongoose.Schema({
     username: { type: String },
-    email:    { type: String, encrypted: true },
-    salary:   { type: Number, encrypted: true }
+    email:    { type: String,   encrypted: true },
+    salary:   { type: Number,   encrypted: true },
+    roles:    { type: [String], encrypted: true }
 });
 schema.plugin(plugin);
 ```
@@ -63,16 +68,19 @@ That's it — the rest of your code is unchanged:
 ```javascript
 const User = mongoose.model('User', schema);
 
-const user = new User({ username: 'alice', email: 'alice@example.com', salary: 75000 });
+const user = new User({ username: 'alice', email: 'alice@example.com', salary: 75000, roles: ['admin', 'editor'] });
 await user.save();
-// MongoDB stores: { username: 'alice', email: '<iv|authTag|ciphertext>', salary: '<iv|authTag|ciphertext>' }
+// MongoDB stores:
+// { username: 'alice', email: '<iv|authTag|ciphertext>', salary: '<iv|authTag|ciphertext>',
+//   roles: ['<iv|authTag|ciphertext>', '<iv|authTag|ciphertext>'] }
 
 const found = await User.findOne({ username: 'alice' });
-// Result: found.email  === 'alice@example.com'  (transparently decrypted)
-// Result: found.salary === 75000                (transparently decrypted)
+// Result: found.email  === 'alice@example.com'           (transparently decrypted)
+// Result: found.salary === 75000                         (transparently decrypted)
+// Result: found.roles  deep-equals ['admin', 'editor']   (each element transparently decrypted)
 ```
 
-> `email` and `salary` are AES-256-GCM encrypted at rest — reads and writes work exactly as before.
+> `email`, `salary`, and `roles` are AES-256-GCM encrypted at rest — reads and writes work exactly as before.
 
 ### Lean queries
 
