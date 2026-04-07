@@ -1,7 +1,7 @@
 {
   "name": "mongoose-aes-encryption",
   "version": "1.0.0",
-  "description": "Mongoose plugin adding AES-256-GCM encryption at rest for String, Number, Date and Boolean fields to schemas.",
+  "description": "Mongoose plugin adding AES-256-GCM encryption at rest to schemas. Supports sub-schemas and inline nested sub-documents.",
   "main": "mongoose-aes-encryption.js",
   "engines": {
     "node": ">=18.0.0",
@@ -32,7 +32,7 @@
     "AES-256-GCM",
     "AES-256-CBC",
     "encryption-at-rest",
-    "crypto"
+    "sub-schemas"
   ],
   "dependencies": {
     "@tsmx/string-crypto": "^2.0.0",
