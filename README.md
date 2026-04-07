@@ -12,7 +12,7 @@ Adds AES-GCM encryption to individual Mongoose schema fields with minimal change
 
 ## Key features
 
-🔒 [Encrypted schema types](#plugin-setup)
+🔒 [Encrypted schema types](#usage)
 - String, Number, Date, and Boolean fields supported as well as arrays of those
 - [Inline nested sub-documents supported](#inline-nested-sub-documents)
 - [Separate sub-schemas supported](#separate-sub-schemas)
