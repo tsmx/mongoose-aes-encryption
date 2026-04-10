@@ -193,11 +193,7 @@ const active   = decrypt(doc.active, { key }) === 'true';        // → boolean
 
 ## Update method compatibility
 
-Encryption is implemented as a Mongoose setter hook and decryption as a getter hook on the schema path.
-
-**Reading:** Decryption is automatic for every standard find operation (`findOne`, `findById`, `find`, `findOneAndUpdate` with `{ new: true }`, etc.) because Mongoose hydrates the returned document and fires getters. The only exception is `.lean()`, which skips hydration entirely.
-
-**Writing:** Encryption is only automatic when a value is assigned through the Mongoose document lifecycle (`new`/`save()` or `findOne()` + mutate + `save()`). Operations that write directly to the database — `updateOne`, `updateMany`, `findOneAndUpdate`, `bulkWrite`, and atomic operators like `$inc`/`$push` — bypass the lifecycle and require manual use of the exported `encrypt` function.
+Encryption is done automatic when a value is assigned through the Mongoose document lifecycle (`new`/`save()` or `findOne()` + mutate + `save()`). Operations that write directly to the database — `updateOne`, `updateMany`, `findOneAndUpdate`, `bulkWrite`, and atomic operators like `$inc`/`$push` — bypass the lifecycle and require manual use of the exported `encrypt` function.
 
 | Operation | Support | Notes |
 |---|---|---|
