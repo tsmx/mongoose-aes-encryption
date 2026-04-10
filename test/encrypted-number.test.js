@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const sc = require('@tsmx/string-crypto');
+const { decrypt } = require('../mongoose-aes-encryption');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const createAESPlugin = require('../mongoose-aes-encryption');
 
@@ -98,8 +98,8 @@ describe('mongoose-aes-encryption EncryptedNumber test suite', () => {
         const lean = await Product.findOne({ id: 'id-test' }).lean();
         expect(typeof lean.price).toStrictEqual('string');
         expect(typeof lean.stock).toStrictEqual('string');
-        expect(parseFloat(sc.decrypt(lean.price, { key: testKey }))).toStrictEqual(9.99);
-        expect(parseFloat(sc.decrypt(lean.stock, { key: testKey }))).toStrictEqual(42);
+        expect(parseFloat(decrypt(lean.price, { key: testKey }))).toStrictEqual(9.99);
+        expect(parseFloat(decrypt(lean.stock, { key: testKey }))).toStrictEqual(42);
     });
 
 });
@@ -199,8 +199,8 @@ describe('mongoose-aes-encryption EncryptedNumber array test suite', () => {
         const lean = await Sensor.findOne({ id: 'id-test' }).lean();
         expect(Array.isArray(lean.readings)).toStrictEqual(true);
         lean.readings.forEach(elem => expect(elem.split('|').length).toStrictEqual(3));
-        expect(lean.readings.map(elem => parseFloat(sc.decrypt(elem, { key: testKey })))).toStrictEqual([1.1, 2.2, 3.3]);
-        expect(lean.scores.map(elem => parseFloat(sc.decrypt(elem, { key: testKey })))).toStrictEqual([10, 20]);
+        expect(lean.readings.map(elem => parseFloat(decrypt(elem, { key: testKey })))).toStrictEqual([1.1, 2.2, 3.3]);
+        expect(lean.scores.map(elem => parseFloat(decrypt(elem, { key: testKey })))).toStrictEqual([10, 20]);
     });
 
     it('tests a successful document creation and retrieval with an array containing null elements', async () => {

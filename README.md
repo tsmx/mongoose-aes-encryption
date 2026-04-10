@@ -175,18 +175,55 @@ const lean = await Employee.findOne({ id: 'emp-1' }).lean();
 
 ### Lean queries
 
-Mongoose `.lean()` bypasses getters and returns the raw ciphertext stored in MongoDB. To decrypt manually, use [`@tsmx/string-crypto`](https://github.com/tsmx/string-crypto) directly:
+Mongoose `.lean()` bypasses getters and returns the raw ciphertext stored in MongoDB. To decrypt manually, use the exported `decrypt` function directly:
 
 ```javascript
-const sc = require('@tsmx/string-crypto');
+const { decrypt } = require('mongoose-aes-encryption');
 const key = process.env.ENCRYPTION_KEY;
 
 const doc = await User.findOne({ username: 'alice' }).lean();
 
-const email    = sc.decrypt(doc.email, { key });                    // → string
-const salary   = parseFloat(sc.decrypt(doc.salary, { key }));       // → number
-const dob      = new Date(sc.decrypt(doc.birthDate, { key }));      // → Date
-const active   = sc.decrypt(doc.active, { key }) === 'true';        // → boolean
+const email    = decrypt(doc.email, { key });                    // → string
+const salary   = parseFloat(decrypt(doc.salary, { key }));       // → number
+const dob      = new Date(decrypt(doc.birthDate, { key }));      // → Date
+const active   = decrypt(doc.active, { key }) === 'true';        // → boolean
+```
+
+---
+
+## Update method compatibility
+
+Encryption and decryption are implemented as Mongoose getter/setter hooks on the schema path. These hooks only fire when a document goes through the full Mongoose document lifecycle. Operations that bypass that lifecycle — bulk updates, atomic operators — require manual use of the exported `encrypt` and `decrypt` functions.
+
+| Operation | Support | Notes |
+|---|---|---|
+| `new Model({ field: v }); doc.save()` | Automatic | Full getter/setter round-trip. Standard path. |
+| `Model.create({ field: v })` | Automatic | Equivalent to `new` + `save()`. |
+| `doc.field = v; doc.save()` (after `findOne()`) | Automatic | Full getter/setter round-trip. |
+| `.lean()` query | Manual | Getter does not fire; use `decrypt(doc.field, { key })` on each ciphertext field. |
+| `Model.findOneAndUpdate(…, { $set: { field: v } })` | Manual | Bypasses document lifecycle; use `encrypt(String(v), { key })` and pass the result as the `$set` value. |
+| `Model.updateOne(…, { $set: { field: v } })` | Manual | Same as above. |
+| `Model.updateMany(…, { $set: { field: v } })` | Manual | Same as above — pre-encrypt each value with `encrypt()` before passing to `$set`. |
+| `Model.findOneAndUpdate(…, { $inc: { field: n } })` | Manual | Cannot `$inc` ciphertext. Use `findOne()` → `doc.field += n` → `doc.save()` instead. |
+| `Model.findOneAndUpdate(…, { $push: { field: v } })` | Manual | Cannot `$push` plaintext into an encrypted array. Use `findOne()` → `doc.arr.push(v)` → `doc.save()`, or pre-encrypt `v` with `encrypt(String(v), { key })` and pass to `$push`. |
+| `Model.bulkWrite()` with `updateOne`/`updateMany` ops | Manual | Same as `updateOne`/`updateMany` — pre-encrypt each value with `encrypt()` before building the bulk operations. |
+
+**Example — manual `$set` with pre-encryption:**
+
+```javascript
+const { encrypt } = require('mongoose-aes-encryption');
+const key = process.env.ENCRYPTION_KEY;
+
+const cipher = encrypt(String(newPrice), { key });
+await Product.updateOne({ id: 'p-1' }, { $set: { price: cipher } });
+```
+
+**Example — manual increment workaround:**
+
+```javascript
+const doc = await Product.findOne({ id: 'p-1' });
+doc.stock += 1;
+await doc.save();
 ```
 
 ---
@@ -243,7 +280,52 @@ const found = await Employee.findById(emp._id);
 
 ---
 
-## Installation
+### `encrypt(value, options)`
+
+Encrypts a plaintext string and returns the ciphertext in wire format (`iv|authTag|ciphertext` for GCM, `iv|ciphertext` for CBC).
+
+**Parameters:**
+- `value` (string): Plaintext to encrypt. Pass `null` or `undefined` to get `null` back unchanged.
+- `options` (Object):
+  - `options.key` (string): 64-character hex key. **Required.**
+  - `options.algorithm` (string, optional): `'aes-256-gcm'` (default) or `'aes-256-cbc'`.
+
+**Returns:** `string` — encrypted ciphertext, or `null`/`undefined` if `value` was nullish.
+
+**Example:**
+```javascript
+const { encrypt } = require('mongoose-aes-encryption');
+const key = process.env.ENCRYPTION_KEY;
+
+// Pre-encrypt before a $set that bypasses Mongoose middleware
+const cipher = encrypt(String(newPrice), { key });
+await Product.updateOne({ id: 'p-1' }, { $set: { price: cipher } });
+```
+
+---
+
+### `decrypt(value, options)`
+
+Decrypts a ciphertext string previously produced by `encrypt` and returns the plaintext.
+
+**Parameters:**
+- `value` (string): Ciphertext in wire format. Pass `null` or `undefined` to get `null` back unchanged.
+- `options` (Object):
+  - `options.key` (string): 64-character hex key. **Required.**
+
+**Returns:** `string` — decrypted plaintext, or `null`/`undefined` if `value` was nullish.
+
+**Example:**
+```javascript
+const { decrypt } = require('mongoose-aes-encryption');
+const key = process.env.ENCRYPTION_KEY;
+
+// Manually decrypt fields from a lean() query
+const doc = await Product.findOne({ id: 'p-1' }).lean();
+const price = parseFloat(decrypt(doc.price, { key }));
+```
+
+---
 
 ```bash
 npm install mongoose-aes-encryption
@@ -342,7 +424,7 @@ AES-256-CBC (available as `algorithm: 'aes-256-cbc'` for backwards compatibility
 
 ### Lean queries expose raw ciphertext
 
-`.lean()` results bypass Mongoose getters entirely. The raw `iv|authTag|ciphertext` string is returned as-is. If your application uses lean queries on collections that contain encrypted fields, treat those fields as opaque ciphertext and decrypt them explicitly with [`@tsmx/string-crypto`](https://github.com/tsmx/string-crypto).
+`.lean()` results bypass Mongoose getters entirely. The raw `iv|authTag|ciphertext` string is returned as-is. If your application uses lean queries on collections that contain encrypted fields, treat those fields as opaque ciphertext and decrypt them explicitly using the exported `decrypt` function — see [Lean queries](#lean-queries) and [Update method compatibility](#update-method-compatibility).
 
 ### Null values
 

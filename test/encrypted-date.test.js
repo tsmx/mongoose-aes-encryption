@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const sc = require('@tsmx/string-crypto');
+const { decrypt } = require('../mongoose-aes-encryption');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const createAESPlugin = require('../mongoose-aes-encryption');
 
@@ -88,9 +88,9 @@ describe('mongoose-aes-encryption EncryptedDate test suite', () => {
         const lean = await Contract.findOne({ id: 'id-test' }).lean();
         expect(typeof lean.startDate).toStrictEqual('string');
         expect(typeof lean.birthDate).toStrictEqual('string');
-        expect(new Date(sc.decrypt(lean.startDate, { key: testKey })).toISOString())
+        expect(new Date(decrypt(lean.startDate, { key: testKey })).toISOString())
             .toStrictEqual(testDate.toISOString());
-        expect(new Date(sc.decrypt(lean.birthDate, { key: testKey })).toISOString())
+        expect(new Date(decrypt(lean.birthDate, { key: testKey })).toISOString())
             .toStrictEqual(testDate2.toISOString());
     });
 
@@ -194,9 +194,9 @@ describe('mongoose-aes-encryption EncryptedDate array test suite', () => {
         const lean = await Project.findOne({ id: 'id-test' }).lean();
         expect(Array.isArray(lean.milestones)).toStrictEqual(true);
         lean.milestones.forEach(elem => expect(elem.split('|').length).toStrictEqual(3));
-        expect(lean.milestones.map(elem => new Date(sc.decrypt(elem, { key: testKey })).toISOString()))
+        expect(lean.milestones.map(elem => new Date(decrypt(elem, { key: testKey })).toISOString()))
             .toStrictEqual([dateA.toISOString(), dateB.toISOString()]);
-        expect(lean.deadlines.map(elem => new Date(sc.decrypt(elem, { key: testKey })).toISOString()))
+        expect(lean.deadlines.map(elem => new Date(decrypt(elem, { key: testKey })).toISOString()))
             .toStrictEqual([dateC.toISOString()]);
     });
 

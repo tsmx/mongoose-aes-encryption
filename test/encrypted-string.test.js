@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const sc = require('@tsmx/string-crypto');
+const { decrypt } = require('../mongoose-aes-encryption');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const createAESPlugin = require('../mongoose-aes-encryption');
 
@@ -88,8 +88,8 @@ describe('mongoose-aes-encryption EncryptedString test suite', () => {
         expect(lean.firstName.split('|').length).toStrictEqual(3);
         expect(lean.lastName).not.toStrictEqual('LastNameTest');
         expect(lean.lastName.split('|').length).toStrictEqual(3);
-        expect(sc.decrypt(lean.firstName, { key: testKey })).toStrictEqual('FirstNameTest');
-        expect(sc.decrypt(lean.lastName, { key: testKey })).toStrictEqual('LastNameTest');
+        expect(decrypt(lean.firstName, { key: testKey })).toStrictEqual('FirstNameTest');
+        expect(decrypt(lean.lastName, { key: testKey })).toStrictEqual('LastNameTest');
     });
 
     it('tests failed decryption due to tampered authTag', async () => {
@@ -202,8 +202,8 @@ describe('mongoose-aes-encryption EncryptedString array test suite', () => {
         const lean = await Article.findOne({ id: 'id-test' }).lean();
         expect(Array.isArray(lean.tags)).toStrictEqual(true);
         lean.tags.forEach(elem => expect(elem.split('|').length).toStrictEqual(3));
-        expect(lean.tags.map(elem => sc.decrypt(elem, { key: testKey }))).toStrictEqual(['news', 'tech']);
-        expect(lean.aliases.map(elem => sc.decrypt(elem, { key: testKey }))).toStrictEqual(['foo', 'bar']);
+        expect(lean.tags.map(elem => decrypt(elem, { key: testKey }))).toStrictEqual(['news', 'tech']);
+        expect(lean.aliases.map(elem => decrypt(elem, { key: testKey }))).toStrictEqual(['foo', 'bar']);
     });
 
     it('tests a successful document creation and retrieval with an array containing null elements', async () => {

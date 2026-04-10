@@ -1,7 +1,7 @@
 # AGENTS.md — Developer & Agent Guide
 
-This file provides guidance for coding agents and human contributors working in
-the `@tsmx/mongoose-aes-encryption` repository.
+Guidance for coding agents and human contributors working in
+`@tsmx/mongoose-aes-encryption`.
 
 ---
 
@@ -9,50 +9,43 @@ the `@tsmx/mongoose-aes-encryption` repository.
 
 A Mongoose plugin that adds transparent AES encryption at rest to schema fields.
 Fields marked with `encrypted: true` are automatically encrypted on write and
-decrypted on read. Encryption/decryption is delegated to `@tsmx/string-crypto`.
-Supports scalar fields and single-element array fields for all four types, as well
-as inline nested sub-documents and separate sub-schemas.
+decrypted on read. Supports scalar fields, single-element array fields
+(`[String]`, `[Number]`, etc.), inline nested sub-documents, and separate
+sub-schemas.
 
 - **Language:** Plain JavaScript (CommonJS, no TypeScript, no build step)
-- **Single source file:** `mongoose-aes-encryption.js`
-- **Test directory:** `test/`
+- **Source files:** `mongoose-aes-encryption.js` (main plugin) + `lib/crypto.js` (inlined AES helpers)
+- **Tests:** `test/` — 6 files, Jest + in-memory MongoDB
 
 ---
 
 ## Commands
 
-### Run all tests
 ```bash
+# Run all tests
 npm test
-```
 
-### Run all tests with coverage
-```bash
+# Run all tests with coverage
 npm run test-coverage
-```
 
-### Run a single test file
-```bash
+# Upload coverage to Coveralls (CI only)
+npm run coveralls
+
+# Run a single test file
 npx jest test/plugin.test.js
 npx jest test/encrypted-string.test.js
 npx jest test/encrypted-number.test.js
 npx jest test/encrypted-date.test.js
 npx jest test/encrypted-boolean.test.js
 npx jest test/complex.test.js
-```
 
-### Run a single test by name
-```bash
+# Run a single test by name
 npx jest -t "tests a successful document creation"
-```
 
-### Lint (no script alias — invoke directly)
-```bash
+# Lint
 npx eslint .
-```
 
-### Fix lint errors automatically
-```bash
+# Auto-fix lint errors
 npx eslint . --fix
 ```
 
@@ -61,197 +54,141 @@ npx eslint . --fix
 ## Code Style
 
 ### Module system
-- **CommonJS only.** Use `require()` and `module.exports`. Do not use ES module
-  `import`/`export` syntax anywhere in this project.
+CommonJS only — `require()` and `module.exports`. No ES module `import`/`export`.
 
-### Formatting (enforced by ESLint — flat config in `eslint.config.js`)
-- **Indentation:** 4 spaces (no tabs). `switch` case bodies are indented 1 level
-  inside the `switch` (`SwitchCase: 1`).
-- **Quotes:** Single quotes for all strings.
-- **Semicolons:** Required at the end of every statement.
-- No Prettier — all formatting rules come from ESLint.
+### Formatting (ESLint flat config in `eslint.config.js`)
+- **Indentation:** 4 spaces (no tabs); `SwitchCase: 1`
+- **Quotes:** Single quotes for all strings
+- **Semicolons:** Required on every statement
+- No Prettier — formatting is enforced by ESLint alone
 
 ### Variables
-- Use `const` for imports and values that are never reassigned.
-- Use `let` for variables that may be reassigned.
-- Avoid `var` in new source code. Test files historically use `var` for top-level
-  mutable lifecycle variables (`mongoServer`, model variables), but `const`/`let`
-  is preferred going forward.
+- `const` for imports and never-reassigned values; `let` for reassigned variables
+- Avoid `var` in new code. Existing test files use `var` for top-level mutable
+  lifecycle variables (`mongoServer`, model) — this is acceptable but not preferred
 
-### Naming conventions
-- **Functions:** camelCase — e.g. `makeGetterSetter`, `createAESPlugin`
-- **Variables and parameters:** camelCase — e.g. `originalType`, `testKey`
-- **Constants:** camelCase (not `SCREAMING_SNAKE_CASE`) — e.g. `allowedAlgorithms`
-- **Unused parameters:** Prefix with `_` to silence the `no-unused-vars` warning —
-  e.g. `function handler(_req, res) {}`
+### Naming
+- **Functions/variables/constants:** camelCase — `makeGetterSetter`, `allowedAlgorithms`
+- No `SCREAMING_SNAKE_CASE` for constants
+- Prefix unused parameters with `_` to silence `no-unused-vars` — e.g. `_req`
 
 ### Exports
-- The module exports a single factory function:
-  `module.exports = function createAESPlugin(options)`.
-- `createAESPlugin` returns a Mongoose plugin function `encryptedPlugin(schema)`.
-- No named exports, no default export object, no class exports.
+`module.exports = function createAESPlugin(options)` — a single factory function.
+It returns `function encryptedPlugin(schema)`. Two named properties are also
+attached as public API:
+- `module.exports.encrypt` — encrypt a plaintext value with the given key
+- `module.exports.decrypt` — decrypt a ciphertext value with the given key
+
+These are stable semver-compatible exports. Use them for lean-query decryption and
+manual operations (`$inc`/`$push` workarounds) instead of accessing `lib/crypto`
+directly.
 
 ### Functions and closures
-- Prefer factory functions and closures over classes when sharing state via
-  captured parameters (e.g. `key`, `algorithm`, `originalType`).
-- The helper `makeGetterSetter(originalType, key, algorithm, isArray)` returns a
-  `{ get, set }` pair — keep this pattern for any new type-specific logic.
-- Avoid adding class hierarchies. The existing closure-based design is intentional.
+Prefer factory functions and closures over classes. `makeGetterSetter(originalType,
+key, algorithm, isArray)` returns `{ get, set }` — follow this pattern for new
+type-specific logic.
 
 ### Error handling
-- Throw `Error` instances with descriptive messages using template literals:
-  ```js
-  throw new Error(`mongoose-aes-encryption: invalid algorithm '${algorithm}'. Allowed: ${allowedAlgorithms.join(', ')}`);
-  ```
-- Always prefix error messages with `'mongoose-aes-encryption: '`.
-- Do not silently swallow errors. Let errors from `@tsmx/string-crypto` and
-  Mongoose propagate naturally.
+- Throw `Error` with a descriptive template-literal message.
+- Always prefix: `'mongoose-aes-encryption: ...'`
+- Let errors from Mongoose propagate; do not swallow them.
 
 ### Async code
-- Use `async/await` consistently. Do not use raw `.then()` / `.catch()` chains.
+`async/await` only. No raw `.then()` / `.catch()` chains.
 
-### Nulls / undefined
-- `null` and `undefined` values must pass through unencrypted on both get and set.
-- Use `passNull: true` in all `sc.encrypt()` / `sc.decrypt()` calls.
-- Guard array elements individually: `elem == null ? elem : sc.encrypt(...)`.
+### Nulls
+`null` and `undefined` pass through unencrypted. Always use `passNull: true` in
+`encrypt()` / `decrypt()`. Guard array elements individually:
+`elem == null ? elem : encrypt(...)`.
 
 ---
 
 ## Architecture
 
 ### Plugin entry point
-`createAESPlugin(options)` is the factory. Call it once and pass the returned
-plugin function to `schema.plugin()` or `mongoose.plugin()`:
 ```js
 const createAESPlugin = require('@tsmx/mongoose-aes-encryption');
-const encryptedPlugin = createAESPlugin({ key, algorithm }); // 'aes-256-gcm' default
-mongoose.plugin(encryptedPlugin);    // global — applies to all schemas
-// or per schema:
-mySchema.plugin(encryptedPlugin);
+const plugin = createAESPlugin({ key, algorithm }); // algorithm defaults to 'aes-256-gcm'
+mongoose.plugin(plugin);     // global
+mySchema.plugin(plugin);     // or per schema
 ```
+Supported algorithms: `'aes-256-gcm'` (default) and `'aes-256-cbc'`.
+`options.key` is required; throws immediately when missing.
 
-- Supported algorithms: `'aes-256-gcm'` (default) and `'aes-256-cbc'`.
-- `options.key` is required; throws immediately if missing or `options` is omitted.
-- `options.algorithm` defaults to `'aes-256-gcm'` (nullish coalescing `??`).
+### How fields are encrypted
+`encryptedPlugin(schema)` calls `schema.eachPath()`, collects paths with
+`encrypted: true`, then rewrites each to `Schema.Types.Mixed` with a `get`/`set`
+pair from `makeGetterSetter()`. The `set` hook converts the native value to a
+string and encrypts it; `get` decrypts and converts back.
 
-### How encryption is applied to a schema
-`encryptedPlugin(schema)` uses `schema.eachPath()` to locate every path whose
-options include `encrypted: true`. For each such path it records the `originalType`
-(and whether it is an array). After the walk, it rewrites each path to
-`Schema.Types.Mixed` with a `get`/`set` pair produced by `makeGetterSetter()`:
-
-```js
-schema.path(pathname, {
-    ...existingOptions,
-    type: schema.constructor.Types.Mixed,
-    get,   // decrypts ciphertext → native type
-    set    // converts native type → string, then encrypts
-});
-```
-
-### Marking fields for encryption
-Add `encrypted: true` to the field definition in the schema:
-```js
-const schema = new Schema({
-    name:      { type: String,  encrypted: true },
-    score:     { type: Number,  encrypted: true },
-    birthdate: { type: Date,    encrypted: true },
-    active:    { type: Boolean, encrypted: true },
-    tags:      { type: [String], encrypted: true },  // array support
-});
-```
-
-### Type conversion (`makeGetterSetter`)
-| `originalType` | `toString(v)` (before encrypt) | `fromString(v)` (after decrypt) |
+### Type conversion table
+| `originalType` | before encrypt (`toString`) | after decrypt (`fromString`) |
 |---|---|---|
 | `String`  | `String(v)` | identity |
 | `Number`  | `String(v)` | `parseFloat(v)` |
 | `Date`    | `new Date(v).toISOString()` | `new Date(v)` |
 | `Boolean` | `String(v)` | `v === 'true'` |
 
-### Wire format (MongoDB storage)
-All fields store the encrypted value as a plain string:
-- AES-256-GCM: `iv|authTag|ciphertext` (3 pipe-separated parts)
-- AES-256-CBC: `iv|ciphertext` (2 pipe-separated parts)
-- `null` / `undefined` values pass through unencrypted.
+### Wire format (stored in MongoDB)
+- AES-256-GCM → `iv|authTag|ciphertext` (3 pipe-separated parts)
+- AES-256-CBC → `iv|ciphertext` (2 pipe-separated parts)
 
 ### lean() queries
-Getters do not run on `.lean()` results — the raw ciphertext string is returned.
-Manual decryption requires `@tsmx/string-crypto` directly:
+Getters do not run on `.lean()` results — raw ciphertext is returned. Decrypt
+manually with `@tsmx/mongoose-aes-encryption`:
 ```js
-const sc = require('@tsmx/string-crypto');
-const plain = sc.decrypt(leanDoc.field, { key });
-const num   = parseFloat(sc.decrypt(leanDoc.numField, { key }));
-const date  = new Date(sc.decrypt(leanDoc.dateField, { key }));
-const bool  = sc.decrypt(leanDoc.boolField, { key }) === 'true';
+const { decrypt } = require('@tsmx/mongoose-aes-encryption');
+decrypt(doc.field, { key });                        // String
+parseFloat(decrypt(doc.numField, { key }));         // Number
+new Date(decrypt(doc.dateField, { key }));          // Date
+decrypt(doc.boolField, { key }) === 'true';         // Boolean
 ```
 
 ---
 
 ## Test Conventions
 
-### Framework
-- **Jest** `^29` with `testEnvironment: 'node'` (see `jest.config.js`).
-- Each test suite spins up an in-memory MongoDB via `mongodb-memory-server`.
-
-### Test files
-- `test/plugin.test.js` — factory error handling, algorithm validation, wire format
-- `test/encrypted-string.test.js` — scalar String + `[String]` array
-- `test/encrypted-number.test.js` — scalar Number + `[Number]` array
-- `test/encrypted-date.test.js` — scalar Date + `[Date]` array
-- `test/encrypted-boolean.test.js` — scalar Boolean + `[Boolean]` array
-- `test/complex.test.js` — multi-type schemas, inline nested sub-documents, separate sub-schemas
-
-### Test description style
-- `describe` blocks: `'mongoose-aes-encryption EncryptedNumber test suite'`
-- `it` descriptions start with `'tests'`:
-  ```js
-  it('tests a successful document creation', async () => { ... });
-  it('tests that plugin creation throws when key is missing', () => { ... });
-  ```
+### Files
+- `test/plugin.test.js` — factory validation, algorithm checks, wire-format probes
+- `test/encrypted-string.test.js` — scalar `String` + `[String]` array + GCM tamper test
+- `test/encrypted-number.test.js` — scalar `Number` + `[Number]` array
+- `test/encrypted-date.test.js` — scalar `Date` + `[Date]` array
+- `test/encrypted-boolean.test.js` — scalar `Boolean` + `[Boolean]` array
+- `test/complex.test.js` — mixed types, inline nested sub-documents, separate sub-schemas
 
 ### Suite structure
 ```js
-describe('suite name', () => {
-    const testKey = '...';         // immutable constants at top
-    var mongoServer = null;        // mutable lifecycle vars (var is acceptable here)
+describe('mongoose-aes-encryption <Name> test suite', () => {
+    const testKey = '9af7d400be4705147dc724db25bfd2513aa11d6013d7bf7bdb2bfe050593bd0f';
+    var mongoServer = null;   // var is conventional for mutable lifecycle vars
     var Model = null;
 
-    beforeAll(async () => { /* start mongo, create plugin, define schema + model */ });
-    afterAll(async () => { /* stop mongo */ });
+    beforeAll(async () => { /* start MongoMemoryServer, connect, define schema+model */ });
+    afterAll(async () => { /* disconnect, stop server */ });
     beforeEach(async () => { /* seed one document */ });
     afterEach(async () => { await Model.deleteMany(); });
 
-    it('tests ...', async () => {
-        // arrange / act / expect
-    });
+    it('tests ...', async () => { /* arrange / act / expect */ });
 });
 ```
+Note: `plugin.test.js` uses `beforeEach`/`afterEach` for the entire Mongoose
+connection (creates and tears down a fresh connection per test) rather than once
+per suite.
 
-### Standard tests per type suite
-Each scalar suite covers:
-1. Successful document creation (value round-trips; lean shows ciphertext string)
-2. Successful document update
-3. Null passthrough (null stored and retrieved as null)
-4. Manual lean decryption via `@tsmx/string-crypto`
+### Naming
+- `describe`: `'mongoose-aes-encryption <Name> test suite'`
+- `it`: descriptions always start with `'tests'`
 
-Each array suite covers:
-1. Successful document creation (array round-trips; lean shows array of ciphertext)
-2. Successful document update
-3. Null field passthrough
-4. Empty array round-trip
-5. Manual lean decryption
-
-The `encrypted-string` suite additionally tests GCM authTag tamper detection.
+### Standard coverage per type
+Each scalar suite: creation round-trip, update, null passthrough, lean decryption.
+Each array suite: adds empty-array and null-element-in-array cases.
 
 ---
 
 ## CI
 
-GitHub Actions workflow: `.github/workflows/git-build.yml`
-
-- Triggers on every push.
-- Matrix: Node 18, 20, 22 on `ubuntu-latest`.
-- Steps: `npm ci` → `npm run test` → `npm run test-coverage` → Coveralls upload.
+- **`git-build.yml`** — triggers on every push; matrix Node 18/20/22;
+  runs `npm ci` → `npm test` → `npm run test-coverage` → Coveralls upload.
+- **`npm-publish.yml`** — manual `workflow_dispatch`; runs tests then `npm publish`.
 
 All tests must pass on Node 18, 20, and 22 before any change is considered complete.

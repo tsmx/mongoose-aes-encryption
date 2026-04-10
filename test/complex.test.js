@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const sc = require('@tsmx/string-crypto');
+const { decrypt } = require('../mongoose-aes-encryption');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const createAESPlugin = require('../mongoose-aes-encryption');
 
@@ -172,7 +172,7 @@ describe('mongoose-aes-encryption inline nested sub-document test suite', () => 
     it('tests a successful manual decryption of an inline nested encrypted field from a lean query', async () => {
         const lean = await Location.findOne({ id: 'id-test' }).lean();
         expect(lean.address.street.split('|').length).toStrictEqual(3);
-        expect(sc.decrypt(lean.address.street, { key: testKey })).toStrictEqual('123 Main St');
+        expect(decrypt(lean.address.street, { key: testKey })).toStrictEqual('123 Main St');
         expect(lean.address.city).toStrictEqual('Springfield');
     });
 
@@ -252,9 +252,9 @@ describe('mongoose-aes-encryption separate sub-schema test suite', () => {
     it('tests a successful manual decryption of sub-schema encrypted fields from a lean query', async () => {
         const lean = await Employee.findOne({ id: 'id-test' }).lean();
         expect(lean.name.split('|').length).toStrictEqual(3);
-        expect(sc.decrypt(lean.name, { key: testKey })).toStrictEqual('Jane Doe');
+        expect(decrypt(lean.name, { key: testKey })).toStrictEqual('Jane Doe');
         expect(lean.contacts[0].email.split('|').length).toStrictEqual(3);
-        expect(sc.decrypt(lean.contacts[0].email, { key: testKey })).toStrictEqual('jane@example.com');
+        expect(decrypt(lean.contacts[0].email, { key: testKey })).toStrictEqual('jane@example.com');
         expect(lean.contacts[0].phone).toStrictEqual('555-1234');
     });
 

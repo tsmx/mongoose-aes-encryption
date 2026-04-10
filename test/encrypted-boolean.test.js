@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const sc = require('@tsmx/string-crypto');
+const { decrypt } = require('../mongoose-aes-encryption');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const createAESPlugin = require('../mongoose-aes-encryption');
 
@@ -99,8 +99,8 @@ describe('mongoose-aes-encryption EncryptedBoolean test suite', () => {
         const lean = await User.findOne({ id: 'id-test' }).lean();
         expect(typeof lean.active).toStrictEqual('string');
         expect(typeof lean.verified).toStrictEqual('string');
-        expect(sc.decrypt(lean.active, { key: testKey }) === 'true').toStrictEqual(true);
-        expect(sc.decrypt(lean.verified, { key: testKey }) === 'true').toStrictEqual(false);
+        expect(decrypt(lean.active, { key: testKey }) === 'true').toStrictEqual(true);
+        expect(decrypt(lean.verified, { key: testKey }) === 'true').toStrictEqual(false);
     });
 
 });
@@ -200,8 +200,8 @@ describe('mongoose-aes-encryption EncryptedBoolean array test suite', () => {
         const lean = await Device.findOne({ id: 'id-test' }).lean();
         expect(Array.isArray(lean.features)).toStrictEqual(true);
         lean.features.forEach(elem => expect(elem.split('|').length).toStrictEqual(3));
-        expect(lean.features.map(elem => sc.decrypt(elem, { key: testKey }) === 'true')).toStrictEqual([true, false, true]);
-        expect(lean.permissions.map(elem => sc.decrypt(elem, { key: testKey }) === 'true')).toStrictEqual([false, false]);
+        expect(lean.features.map(elem => decrypt(elem, { key: testKey }) === 'true')).toStrictEqual([true, false, true]);
+        expect(lean.permissions.map(elem => decrypt(elem, { key: testKey }) === 'true')).toStrictEqual([false, false]);
     });
 
     it('tests a successful document creation and retrieval with an array containing null elements', async () => {
