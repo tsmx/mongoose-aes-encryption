@@ -193,20 +193,26 @@ const active   = decrypt(doc.active, { key }) === 'true';        // → boolean
 
 ## Update method compatibility
 
-Encryption and decryption are implemented as Mongoose getter/setter hooks on the schema path. These hooks only fire when a document goes through the full Mongoose document lifecycle. Operations that bypass that lifecycle — bulk updates, atomic operators — require manual use of the exported `encrypt` and `decrypt` functions.
+Encryption is implemented as a Mongoose setter hook and decryption as a getter hook on the schema path.
+
+**Reading:** Decryption is automatic for every standard find operation (`findOne`, `findById`, `find`, `findOneAndUpdate` with `{ new: true }`, etc.) because Mongoose hydrates the returned document and fires getters. The only exception is `.lean()`, which skips hydration entirely.
+
+**Writing:** Encryption is only automatic when a value is assigned through the Mongoose document lifecycle (`new`/`save()` or `findOne()` + mutate + `save()`). Operations that write directly to the database — `updateOne`, `updateMany`, `findOneAndUpdate`, `bulkWrite`, and atomic operators like `$inc`/`$push` — bypass the lifecycle and require manual use of the exported `encrypt` function.
 
 | Operation | Support | Notes |
 |---|---|---|
-| `new Model({ field: v }); doc.save()` | Automatic | Full getter/setter round-trip. Standard path. |
+| `Model.findOne(…)` / `find(…)` / `findById(…)` | Automatic | Document is hydrated; getter fires on every encrypted field. |
+| `Model.findOneAndUpdate(…, …, { new: true })` | Automatic (read) | Returned document is hydrated and decrypted automatically. Write side may still require manual encryption — see below. |
+| `.lean()` query | Manual (read) | Hydration is skipped; getter does not fire. Use `decrypt(doc.field, { key })` on each ciphertext field. |
+| `new Model({ field: v }); doc.save()` | Automatic | Full setter/getter round-trip. Standard write path. |
 | `Model.create({ field: v })` | Automatic | Equivalent to `new` + `save()`. |
-| `doc.field = v; doc.save()` (after `findOne()`) | Automatic | Full getter/setter round-trip. |
-| `.lean()` query | Manual | Getter does not fire; use `decrypt(doc.field, { key })` on each ciphertext field. |
-| `Model.findOneAndUpdate(…, { $set: { field: v } })` | Manual | Bypasses document lifecycle; use `encrypt(String(v), { key })` and pass the result as the `$set` value. |
-| `Model.updateOne(…, { $set: { field: v } })` | Manual | Same as above. |
-| `Model.updateMany(…, { $set: { field: v } })` | Manual | Same as above — pre-encrypt each value with `encrypt()` before passing to `$set`. |
-| `Model.findOneAndUpdate(…, { $inc: { field: n } })` | Manual | Cannot `$inc` ciphertext. Use `findOne()` → `doc.field += n` → `doc.save()` instead. |
-| `Model.findOneAndUpdate(…, { $push: { field: v } })` | Manual | Cannot `$push` plaintext into an encrypted array. Use `findOne()` → `doc.arr.push(v)` → `doc.save()`, or pre-encrypt `v` with `encrypt(String(v), { key })` and pass to `$push`. |
-| `Model.bulkWrite()` with `updateOne`/`updateMany` ops | Manual | Same as `updateOne`/`updateMany` — pre-encrypt each value with `encrypt()` before building the bulk operations. |
+| `doc.field = v; doc.save()` (after `findOne()`) | Automatic | Full setter/getter round-trip. |
+| `Model.findOneAndUpdate(…, { $set: { field: v } })` | Manual (write) | Setter is bypassed; pre-encrypt the value with `encrypt(String(v), { key })` before passing to `$set`. |
+| `Model.updateOne(…, { $set: { field: v } })` | Manual (write) | Same as above. |
+| `Model.updateMany(…, { $set: { field: v } })` | Manual (write) | Same as above — pre-encrypt each value with `encrypt()` before passing to `$set`. |
+| `Model.findOneAndUpdate(…, { $inc: { field: n } })` | Manual (write) | Cannot `$inc` ciphertext. Use `findOne()` → `doc.field += n` → `doc.save()` instead. |
+| `Model.findOneAndUpdate(…, { $push: { field: v } })` | Manual (write) | Cannot `$push` plaintext into an encrypted array. Use `findOne()` → `doc.arr.push(v)` → `doc.save()`, or pre-encrypt `v` with `encrypt(String(v), { key })` and pass to `$push`. |
+| `Model.bulkWrite()` with `updateOne`/`updateMany` ops | Manual (write) | Same as `updateOne`/`updateMany` — pre-encrypt each value with `encrypt()` before building the bulk operations. |
 
 **Example — manual `$set` with pre-encryption:**
 
