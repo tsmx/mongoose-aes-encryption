@@ -29,6 +29,12 @@ describe('mongoose-aes-encryption crypto test suite', () => {
         expect(() => parseKey('tooshort')).toThrow('mongoose-aes-encryption: key must be 32 bytes (raw string) or 64 hex characters');
     });
 
+    it('tests encrypt defaults to aes-256-gcm when no algorithm is specified', () => {
+        const ciphertext = encrypt(testString, { key: testKeyHex });
+        // GCM produces 3 pipe-separated parts: iv|ciphertext|authTag
+        expect(ciphertext.split('|').length).toStrictEqual(3);
+    });
+
     it('tests encrypt and decrypt round-trip with GCM and hex key', () => {
         const cipher = encrypt(testString, { key: testKeyHex, algorithm: 'aes-256-gcm' });
         const parts = cipher.split('|');
@@ -70,6 +76,18 @@ describe('mongoose-aes-encryption crypto test suite', () => {
 
     it('tests decrypt throws for null input when passNull is false', () => {
         expect(() => decrypt(null, { key: testKeyHex, passNull: false })).toThrow('mongoose-aes-encryption: decrypt input must not be null');
+    });
+
+    it('tests encrypt accepts a pre-parsed Buffer key', () => {
+        const keyBuf = parseKey(testKeyHex);
+        const ciphertext = encrypt(testString, { key: keyBuf, algorithm: 'aes-256-gcm' });
+        expect(ciphertext.split('|').length).toStrictEqual(3);
+    });
+
+    it('tests decrypt accepts a pre-parsed Buffer key', () => {
+        const keyBuf = parseKey(testKeyHex);
+        const ciphertext = encrypt(testString, { key: testKeyHex, algorithm: 'aes-256-gcm' });
+        expect(decrypt(ciphertext, { key: keyBuf })).toStrictEqual(testString);
     });
 
     it('tests encrypt throws for unknown algorithm', () => {
