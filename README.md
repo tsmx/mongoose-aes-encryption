@@ -26,8 +26,8 @@ const createAESPlugin = require('mongoose-aes-encryption');
 const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
 
 const userSchema = new mongoose.Schema({
-    email: { type: String, encrypted: true },
-    salary: { type: Number, encrypted: true }
+    token: { type: String, encrypted: true },
+    pin: { type: Number, encrypted: true }
 });
 
 userSchema.plugin(plugin);
@@ -37,14 +37,14 @@ MongoDB stores only ciphertext — your application reads and writes plain value
 
 ## What this package does and what not
 
-- ✅ Field-level encryption for Mongoose schemas
-- ✅ Transparent encryption on save, decryption on read
-- ✅ AES-256-GCM authenticated encryption
-- ✅ Tamper detection for encrypted values
-- ✅ Works with [nested sub-documents](#inline-nested-sub-documents), [sub-schemas](#separate-sub-schemas), and arrays
+✅ Field-level encryption for Mongoose schemas  
+✅ Transparent encryption on save, decryption on read  
+✅ AES-256-GCM authenticated encryption  
+✅ Tamper detection for encrypted values  
+✅ Works with [nested sub-documents](#inline-nested-sub-documents), [sub-schemas](#separate-sub-schemas), and arrays  
 
-- ❌ Not full-database encryption
-- ❌ Not a replacement for MongoDB Atlas encryption at rest
+❌ Not full-database encryption  
+❌ Not a replacement for MongoDB Atlas encryption at rest  
 
 ## Usage
 
