@@ -181,9 +181,7 @@ await doc.save();
 
 ## API Reference
 
-### Plugin Setup
-
-#### `createAESPlugin(options)`
+### `createAESPlugin(options)`
 
 Creates and returns a Mongoose plugin function that encrypts and decrypts schema fields. Call this once — before defining any schema that uses encrypted fields — and apply the returned plugin to each schema with `schema.plugin()`.
 
