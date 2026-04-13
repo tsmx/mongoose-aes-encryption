@@ -37,38 +37,14 @@ MongoDB stores only ciphertext — your application reads and writes plain value
 
 ## What this package does and what not
 
-✅ Field-level encryption for Mongoose schemas
-✅ Transparent encryption on save, decryption on read
-✅ AES-256-GCM authenticated encryption
-✅ Tamper detection for encrypted values
-✅ Works with [nested sub-documents](#inline-nested-sub-documents), [sub-schemas](#separate-sub-schemas), and arrays
+- ✅ Field-level encryption for Mongoose schemas
+- ✅ Transparent encryption on save, decryption on read
+- ✅ AES-256-GCM authenticated encryption
+- ✅ Tamper detection for encrypted values
+- ✅ Works with [nested sub-documents](#inline-nested-sub-documents), [sub-schemas](#separate-sub-schemas), and arrays
 
-❌ Not full-database encryption
-❌ Not a replacement for MongoDB Atlas encryption at rest
-
-## Key features
-
-🔒 [Encrypted schema types](#usage)
-- String, Number, Date, and Boolean fields supported as well as arrays of those
-- [Inline nested sub-documents supported](#inline-nested-sub-documents)
-- [Separate sub-schemas supported](#separate-sub-schemas)
-- Transparent encryption on every save, transparent decryption on every read
-- `null` values pass through unencrypted
-
-🛡️ [Tamper detection via AES-256-GCM](#security)
-- Authenticated encryption generates a cryptographic authentication tag alongside every ciphertext
-- Any modification of the stored value — bit-flip, truncation, or substitution — invalidates the tag and causes decryption to throw
-- Stored as `iv|authTag|ciphertext` in MongoDB
-
-⚙️ [Minimal setup](#setup)
-- Two lines of setup code before your schema definition
-- One extra flag per encrypted field (`encrypted: true`) — no other schema changes required
-
-See the [API reference](#api-reference) for full specs and examples.
-
-For backwards compatibility, AES-256-CBC can also be used. See [Options](#options) on how to set this explicitly.
-
----
+- ❌ Not full-database encryption
+- ❌ Not a replacement for MongoDB Atlas encryption at rest
 
 ## Usage
 
@@ -168,8 +144,6 @@ const dob      = new Date(decrypt(doc.birthDate, { key }));      // → Date
 const active   = decrypt(doc.active, { key }) === 'true';        // → boolean
 ```
 
----
-
 ## Update method compatibility
 
 Encryption is done automatic when a value is assigned through the Mongoose document lifecycle (`new`/`save()` or `findOne()` + mutate + `save()`). Operations that write directly to the database — `updateOne`, `updateMany`, `findOneAndUpdate`, `bulkWrite`, and atomic operators like `$inc`/`$push` — bypass the lifecycle and require manual use of the exported `encrypt` function.
@@ -205,8 +179,6 @@ doc.stock += 1;
 await doc.save();
 ```
 
----
-
 ## API Reference
 
 ### Plugin Setup
@@ -239,8 +211,6 @@ const schema = new mongoose.Schema({
 schema.plugin(plugin);
 ```
 
----
-
 ### `encrypt(value, options)`
 
 Encrypts a plaintext string and returns the ciphertext in wire format (`iv|authTag|ciphertext` for GCM, `iv|ciphertext` for CBC).
@@ -263,8 +233,6 @@ const cipher = encrypt(String(newPrice), { key });
 await Product.updateOne({ id: 'p-1' }, { $set: { price: cipher } });
 ```
 
----
-
 ### `decrypt(value, options)`
 
 Decrypts a ciphertext string previously produced by `encrypt` and returns the plaintext.
@@ -285,8 +253,6 @@ const key = process.env.ENCRYPTION_KEY;
 const doc = await Product.findOne({ id: 'p-1' }).lean();
 const price = parseFloat(decrypt(doc.price, { key }));
 ```
-
----
 
 ## Setup
 
@@ -319,8 +285,6 @@ const price = parseFloat(decrypt(doc.price, { key }));
    schema.plugin(plugin);
    ```
 
----
-
 ## Security
 
 ### AES-256-GCM — authenticated encryption with tamper detection
@@ -331,7 +295,7 @@ By default, `mongoose-aes-encryption` uses **AES-256-GCM**, an authenticated enc
 iv|authTag|ciphertext
 ```
 
-The `authTag` is a cryptographic MAC computed over the ciphertext. On every read the authentication tag is verified before decryption. If the stored value has been modified in any way — bit-flip, truncation, or wholesale substitution — the tag check fails and decryption throws immediately. Corrupted or tampered ciphertext can never be silently read back as incorrect plaintext.
+The `authTag` is a cryptographic MAC computed over the ciphertext. On every read the authentication tag is verified before decryption. If the stored value has been modified in any way — bit-flip, truncation, or wholesale substitution — the tag check fails and decryption `throws` immediately. Corrupted or tampered ciphertext can never be silently read back as incorrect plaintext.
 
 AES-256-CBC (available as `algorithm: 'aes-256-cbc'` for backwards compatibility) uses the wire format `iv|ciphertext` and provides no tamper detection.
 
@@ -342,8 +306,6 @@ AES-256-CBC (available as `algorithm: 'aes-256-cbc'` for backwards compatibility
 ### Null values
 
 `null` fields are stored as `null` in MongoDB without encryption. Do not rely on `null` values being confidential.
-
----
 
 ## License
 
