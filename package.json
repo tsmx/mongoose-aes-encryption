@@ -1,7 +1,7 @@
 {
   "name": "mongoose-aes-encryption",
   "version": "1.1.0",
-  "description": "Mongoose plugin for MongoDB field-level encryption using AES-256-GCM with tamper detection",
+  "description": "Mongoose encryption plugin for MongoDB: field-level AES-256-GCM with tamper detection",
   "main": "mongoose-aes-encryption.js",
   "engines": {
     "node": ">=18.0.0",
@@ -22,11 +22,19 @@
     "mongoose",
     "mongodb",
     "encryption",
+    "encrypt",
+    "decrypt",
+    "decryption",
+    "plugin",
+    "field",
+    "field-encryption",
+    "field-level encryption",
     "aes",
     "aes-256",
-    "aes-gcm",
+    "aes-256-gcm",
+    "at-rest",
+    "tamper-detection",
     "security",
-    "field-level encryption",
     "crypto"
   ],
   "dependencies": {

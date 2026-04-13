@@ -6,7 +6,7 @@
 
 # [**mongoose-aes-encryption**](https://github.com/tsmx/mongoose-aes-encryption)
 
-> Mongoose plugin for MongoDB field-level encryption providing AES-256-GCM encryption-at-rest with built-in tamper detection.
+> Mongoose encryption plugin for MongoDB providing field-level AES-256-GCM encryption-at-rest with built-in tamper detection.
 
 Secure sensitive fields such as passwords, PII, tokens, and secrets while
 keeping your application logic unchanged.
@@ -188,7 +188,7 @@ Creates and returns a Mongoose plugin function that encrypts and decrypts schema
 **Parameters:**
 - `options` (Object): Configuration object.
   - `options.key` (string): 64-character hex string (32 bytes). **Required.**
-  - `options.algorithm` (string, optional): Encryption algorithm. Default: `'aes-256-gcm'`.
+  - `options.algorithm` (string, optional): Encryption algorithm. `'aes-256-gcm'` (default) or `'aes-256-cbc'`.
 
 **Returns:** `Function` — Mongoose plugin function, ready to pass to `schema.plugin()`.
 
