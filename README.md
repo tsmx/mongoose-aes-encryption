@@ -59,17 +59,17 @@ const schema = new mongoose.Schema({
 });
 ```
 
-To encrypt `email`, `salary`, and `roles` at rest using AES-GCM, add two lines of setup and one flag per field:
+To encrypt `email`, `salary`, and `phoneNumbers` at rest using AES-GCM, add two lines of setup and one flag per field:
 
 ```javascript
 const createAESPlugin = require('mongoose-aes-encryption');
 const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
 
 const schema = new mongoose.Schema({
-    username: { type: String },
-    email:    { type: String,   encrypted: true },
-    salary:   { type: Number,   encrypted: true },
-    roles:    { type: [String], encrypted: true }
+    username:     { type: String },
+    email:        { type: String,   encrypted: true },
+    salary:       { type: Number,   encrypted: true },
+    phoneNumbers: { type: [String], encrypted: true }
 });
 schema.plugin(plugin);
 ```
@@ -79,19 +79,17 @@ That's it — the rest of your code is unchanged:
 ```javascript
 const User = mongoose.model('User', schema);
 
-const user = new User({ username: 'alice', email: 'alice@example.com', salary: 75000, roles: ['admin', 'editor'] });
+const user = new User({ username: 'alice', email: 'alice@example.com', salary: 75000, phoneNumbers: ['+1-555-0100', '+1-555-0101'] });
 await user.save();
 // MongoDB stores:
 // { username: 'alice', email: '<iv|ciphertext|authTag>', salary: '<iv|ciphertext|authTag>',
-//   roles: ['<iv|ciphertext|authTag>', '<iv|ciphertext|authTag>'] }
+//   phoneNumbers: ['<iv|ciphertext|authTag>', '<iv|ciphertext|authTag>'] }
 
 const found = await User.findOne({ username: 'alice' });
-// Result: found.email  === 'alice@example.com'           (transparently decrypted)
-// Result: found.salary === 75000                         (transparently decrypted)
-// Result: found.roles  deep-equals ['admin', 'editor']   (each element transparently decrypted)
+// Result: found.email        === 'alice@example.com'                    (transparently decrypted)
+// Result: found.salary       === 75000                                  (transparently decrypted)
+// Result: found.phoneNumbers deep-equals ['+1-555-0100', '+1-555-0101'] (each element transparently decrypted)
 ```
-
-> `email`, `salary`, and `roles` are AES-256-GCM encrypted at rest — reads and writes work exactly as before.
 
 ### Inline nested sub-documents
 
@@ -141,7 +139,7 @@ const doc = await User.findOne({ username: 'alice' }).lean();
 const email    = decrypt(doc.email, { key });                    // → string
 const salary   = parseFloat(decrypt(doc.salary, { key }));       // → number
 const dob      = new Date(decrypt(doc.birthDate, { key }));      // → Date
-const active   = decrypt(doc.active, { key }) === 'true';        // → boolean
+const active   = decrypt(doc.mfaEnabled, { key }) === 'true';        // → boolean
 ```
 
 ## Update method compatibility
@@ -200,11 +198,11 @@ const createAESPlugin = require('mongoose-aes-encryption');
 const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
 
 const schema = new mongoose.Schema({
-    name:      { type: String },
-    email:     { type: String,  encrypted: true },
-    birthDate: { type: Date,    encrypted: true },
-    salary:    { type: Number,  encrypted: true },
-    active:    { type: Boolean, encrypted: true }
+    name:       { type: String },
+    email:      { type: String,  encrypted: true },
+    birthDate:  { type: Date,    encrypted: true },
+    salary:     { type: Number,  encrypted: true },
+    mfaEnabled: { type: Boolean, encrypted: true }
 });
 schema.plugin(plugin);
 ```
