@@ -6,9 +6,45 @@
 
 # [**mongoose-aes-encryption**](https://github.com/tsmx/mongoose-aes-encryption)
 
-> Easy to use Mongoose plugin providing AES-256-GCM encryption-at-rest with built-in tamper detection.
+> Mongoose plugin for MongoDB field-level encryption providing AES-256-GCM encryption-at-rest with built-in tamper detection.
 
-Adds AES-GCM encryption to individual Mongoose schema fields with minimal changes to existing schema definitions. All encryption and decryption is fully transparent: your application reads and writes plain values as usual while MongoDB stores only ciphertext.
+Secure sensitive fields such as passwords, PII, tokens, and secrets while
+keeping your application logic unchanged.
+
+## Installation
+
+```bash
+npm install mongoose-aes-encryption
+```
+
+## Quick Example
+
+```js
+const mongoose = require('mongoose');
+const createAESPlugin = require('mongoose-aes-encryption');
+
+const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
+
+const userSchema = new mongoose.Schema({
+email: { type: String, encrypted: true },
+salary: { type: Number, encrypted: true }
+});
+
+userSchema.plugin(plugin);
+```
+
+MongoDB stores only ciphertext — your application reads and writes plain values.
+
+## What this package does and what not
+
+✅ Field-level encryption for Mongoose schemas
+✅ Transparent encryption on save, decryption on read
+✅ AES-256-GCM authenticated encryption
+✅ Tamper detection for encrypted values
+✅ Works with nested objects, sub-schemas, and arrays
+
+❌ Not full-database encryption
+❌ Not a replacement for MongoDB Atlas encryption at rest
 
 ## Key features
 
@@ -83,96 +119,39 @@ const found = await User.findOne({ username: 'alice' });
 
 ### Inline nested sub-documents
 
-Encrypted fields inside inline nested objects work without any extra steps. Apply the plugin once to the top-level schema — Mongoose traverses the nested object automatically.
+Encrypted fields inside inline nested objects work automatically.
 
-```javascript
-const createAESPlugin = require('mongoose-aes-encryption');
-const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
-
-// 'street' is encrypted; 'city' is stored as plain text
+```js
 const schema = new mongoose.Schema({
-    id:      { type: String, required: true },
+    id: { type: String, required: true },
     address: {
-        street: { type: String, encrypted: true },
-        city:   { type: String }
-    }
+    street: { type: String, encrypted: true },
+    city: { type: String }
+}
 });
-schema.plugin(plugin); // one plugin call on the top-level schema is sufficient
 
-const Location = mongoose.model('Location', schema);
-```
-
-Reads and writes use normal dot-notation — decryption is fully transparent:
-
-```javascript
-const loc = new Location({ id: 'loc-1', address: { street: '456 Oak Ave', city: 'Shelbyville' } });
-await loc.save();
-// MongoDB stores: { address: { street: '<iv|authTag|ciphertext>', city: 'Shelbyville' } }
-
-const found = await Location.findOne({ id: 'loc-1' });
-// Result: found.address.street === '456 Oak Ave'   (transparently decrypted)
-// Result: found.address.city   === 'Shelbyville'   (plain — stored and returned as-is)
-
-const lean = await Location.findOne({ id: 'loc-1' }).lean();
-// Result: lean.address.street  === '<iv|authTag|ciphertext>'  (raw ciphertext — no getter)
-// Result: lean.address.city    === 'Shelbyville'
+schema.plugin(plugin);
 ```
 
 ### Separate sub-schemas
 
-When a sub-schema is defined separately and embedded in a parent schema, apply the plugin to **both** the sub-schema and the parent schema. Calling it only on the parent schema will not encrypt fields defined in the sub-schema.
+Apply the plugin to **both** the parent schema and the sub-schema.
 
-```javascript
-const createAESPlugin = require('mongoose-aes-encryption');
-const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
-
-// Sub-schema: 'email' is encrypted, 'phone' is plain
+```js
 const contactSchema = new mongoose.Schema({
     email: { type: String, encrypted: true },
     phone: { type: String }
 });
-contactSchema.plugin(plugin); // required — plugin must be applied to the sub-schema too
+
+contactSchema.plugin(plugin);
 
 const employeeSchema = new mongoose.Schema({
-    id:       { type: String, required: true },
-    name:     { type: String, encrypted: true },
+    name: { type: String, encrypted: true },
     contacts: [contactSchema]
 });
+
 employeeSchema.plugin(plugin);
-
-const Employee = mongoose.model('Employee', employeeSchema);
 ```
-
-Reads and writes work the same way — every encrypted field decrypts transparently regardless of nesting depth:
-
-```javascript
-const emp = new Employee({
-    id: 'emp-1',
-    name: 'Jane Doe',
-    contacts: [
-        { email: 'jane@example.com', phone: '555-1234' },
-        { email: 'jane.doe@work.com', phone: '555-5678' }
-    ]
-});
-await emp.save();
-// MongoDB stores:
-// { name: '<iv|authTag|ciphertext>',
-//   contacts: [
-//     { email: '<iv|authTag|ciphertext>', phone: '555-1234' },
-//     { email: '<iv|authTag|ciphertext>', phone: '555-5678' }
-//   ] }
-
-const found = await Employee.findOne({ id: 'emp-1' });
-// Result: found.name              === 'Jane Doe'           (transparently decrypted)
-// Result: found.contacts[0].email === 'jane@example.com'   (transparently decrypted)
-// Result: found.contacts[0].phone === '555-1234'           (plain — stored as-is)
-
-const lean = await Employee.findOne({ id: 'emp-1' }).lean();
-// Result: lean.name              === '<iv|authTag|ciphertext>'  (raw ciphertext)
-// Result: lean.contacts[0].email === '<iv|authTag|ciphertext>'  (raw ciphertext)
-// Result: lean.contacts[0].phone === '555-1234'                 (plain)
-```
-
 ### Lean queries
 
 Mongoose `.lean()` bypasses getters and returns the raw ciphertext stored in MongoDB. To decrypt manually, use the exported `decrypt` function directly:
@@ -258,24 +237,6 @@ const schema = new mongoose.Schema({
     active:    { type: Boolean, encrypted: true }
 });
 schema.plugin(plugin);
-
-const Employee = mongoose.model('Employee', schema);
-
-const emp = new Employee({
-    name: 'Bob', 
-    email: 'bob@example.com',
-    birthDate: new Date('1990-01-01'), 
-    salary: 60000, 
-    active: true
-});
-await emp.save();
-// Result: name stored as plain text; all other fields stored as AES-256-GCM ciphertext
-
-const found = await Employee.findById(emp._id);
-// Result: found.email     === 'bob@example.com'
-// Result: found.birthDate instanceof Date  → true
-// Result: found.salary    === 60000
-// Result: found.active    === true
 ```
 
 ---
@@ -323,54 +284,6 @@ const key = process.env.ENCRYPTION_KEY;
 // Manually decrypt fields from a lean() query
 const doc = await Product.findOne({ id: 'p-1' }).lean();
 const price = parseFloat(decrypt(doc.price, { key }));
-```
-
----
-
-```bash
-npm install mongoose-aes-encryption
-```
-
----
-
-## Options
-
-To use the plugin with all defaults (AES-256-GCM), pass only the required key:
-
-```javascript
-const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
-```
-
-To customise the algorithm:
-
-```javascript
-const plugin = createAESPlugin({
-    key:       process.env.ENCRYPTION_KEY,
-    algorithm: 'aes-256-gcm'
-});
-```
-
-### `key`
-
-Type: `string`  
-Required.
-
-A 64-character hexadecimal string representing the 32-byte AES encryption key. All schemas that use the returned plugin share this key. Throws at configuration time if missing or if `options` is omitted entirely.
-
-```javascript
-const plugin = createAESPlugin({ key: 'a1b2c3d4e5f6...' }); // 64 hex chars
-```
-
-### `algorithm`
-
-Type: `string`  
-Default: `'aes-256-gcm'`
-
-Encryption algorithm to use. `'aes-256-gcm'` (default) is an authenticated cipher that generates a tamper-detecting authentication tag for every value. `'aes-256-cbc'` is available for backwards compatibility with data encrypted before GCM support was introduced; it provides no tamper detection.
-
-```javascript
-// Backwards compatibility only
-const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY, algorithm: 'aes-256-cbc' });
 ```
 
 ---

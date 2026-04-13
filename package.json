@@ -1,7 +1,7 @@
 {
   "name": "mongoose-aes-encryption",
   "version": "1.1.0",
-  "description": "Mongoose plugin adding AES-256-GCM encryption at rest to schemas. Supports sub-schemas and inline nested sub-documents.",
+  "description": "Mongoose plugin for MongoDB field-level encryption using AES-256-GCM with tamper detection",
   "main": "mongoose-aes-encryption.js",
   "engines": {
     "node": ">=18.0.0",
@@ -20,19 +20,14 @@
   },
   "keywords": [
     "mongoose",
-    "MongoDB",
-    "plugin",
+    "mongodb",
     "encryption",
-    "decryption",
-    "string",
-    "number",
-    "date",
-    "boolean",
-    "AES",
-    "AES-256-GCM",
-    "AES-256-CBC",
-    "encryption-at-rest",
-    "sub-schemas"
+    "aes",
+    "aes-256",
+    "aes-gcm",
+    "security",
+    "field-level encryption",
+    "crypto"
   ],
   "dependencies": {
     "mongoose": "^9.0.0"
