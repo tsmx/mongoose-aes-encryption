@@ -35,7 +35,7 @@ userSchema.plugin(plugin);
 
 MongoDB stores only ciphertext — your application reads and writes plain values.
 
-## What this package does and what not
+## What this package does
 
 ✅ Field-level encryption for Mongoose schemas  
 ✅ Transparent encryption on save, decryption on read  
