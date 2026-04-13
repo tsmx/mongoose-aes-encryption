@@ -82,8 +82,8 @@ const User = mongoose.model('User', schema);
 const user = new User({ username: 'alice', email: 'alice@example.com', salary: 75000, roles: ['admin', 'editor'] });
 await user.save();
 // MongoDB stores:
-// { username: 'alice', email: '<iv|authTag|ciphertext>', salary: '<iv|authTag|ciphertext>',
-//   roles: ['<iv|authTag|ciphertext>', '<iv|authTag|ciphertext>'] }
+// { username: 'alice', email: '<iv|ciphertext|authTag>', salary: '<iv|ciphertext|authTag>',
+//   roles: ['<iv|ciphertext|authTag>', '<iv|ciphertext|authTag>'] }
 
 const found = await User.findOne({ username: 'alice' });
 // Result: found.email  === 'alice@example.com'           (transparently decrypted)
@@ -211,7 +211,7 @@ schema.plugin(plugin);
 
 ### `encrypt(value, options)`
 
-Encrypts a plaintext string and returns the ciphertext in wire format (`iv|authTag|ciphertext` for GCM, `iv|ciphertext` for CBC).
+Encrypts a plaintext string and returns the ciphertext in wire format (`iv|ciphertext|authTag` for GCM, `iv|ciphertext` for CBC).
 
 **Parameters:**
 - `value` (string): Plaintext to encrypt. Pass `null` or `undefined` to get `null` back unchanged.
@@ -290,7 +290,7 @@ const price = parseFloat(decrypt(doc.price, { key }));
 By default, `mongoose-aes-encryption` uses **AES-256-GCM**, an authenticated encryption mode. Every encrypted value is stored in MongoDB as a pipe-delimited string:
 
 ```
-iv|authTag|ciphertext
+iv|ciphertext|authTag
 ```
 
 The `authTag` is a cryptographic MAC computed over the ciphertext. On every read the authentication tag is verified before decryption. If the stored value has been modified in any way — bit-flip, truncation, or wholesale substitution — the tag check fails and decryption `throws` immediately. Corrupted or tampered ciphertext can never be silently read back as incorrect plaintext.
@@ -299,7 +299,7 @@ AES-256-CBC (available as `algorithm: 'aes-256-cbc'` for backwards compatibility
 
 ### Lean queries expose raw ciphertext
 
-`.lean()` results bypass Mongoose getters entirely. The raw `iv|authTag|ciphertext` string is returned as-is. If your application uses lean queries on collections that contain encrypted fields, treat those fields as opaque ciphertext and decrypt them explicitly using the exported `decrypt` function — see [Lean queries](#lean-queries) and [Update method compatibility](#update-method-compatibility).
+`.lean()` results bypass Mongoose getters entirely. The raw `iv|ciphertext|authTag` string is returned as-is. If your application uses lean queries on collections that contain encrypted fields, treat those fields as opaque ciphertext and decrypt them explicitly using the exported `decrypt` function — see [Lean queries](#lean-queries) and [Update method compatibility](#update-method-compatibility).
 
 ### Null values
 

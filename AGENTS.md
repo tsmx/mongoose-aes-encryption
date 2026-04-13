@@ -130,7 +130,7 @@ string and encrypts it; `get` decrypts and converts back.
 | `Boolean` | `String(v)` | `v === 'true'` |
 
 ### Wire format (stored in MongoDB)
-- AES-256-GCM → `iv|authTag|ciphertext` (3 pipe-separated parts)
+- AES-256-GCM → `iv|ciphertext|authTag` (3 pipe-separated parts)
 - AES-256-CBC → `iv|ciphertext` (2 pipe-separated parts)
 
 ### lean() queries

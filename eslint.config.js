@@ -7,7 +7,15 @@ module.exports = [
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'commonjs',
-            globals: { Atomics: 'readonly', SharedArrayBuffer: 'readonly' }
+            globals: {
+                Atomics: 'readonly',
+                SharedArrayBuffer: 'readonly',
+                Buffer: 'readonly',
+                process: 'readonly',
+                console: 'readonly',
+                __dirname: 'readonly',
+                __filename: 'readonly'
+            }
         },
         rules: {
             semi: 'error',

@@ -44,7 +44,7 @@ describe('mongoose-aes-encryption plugin registration test suite', () => {
         const item = new Item({ label: 'test' });
         const saved = await item.save();
         const lean = await Item.findById(saved._id).lean();
-        // AES-256-GCM produces 3 pipe-separated parts: iv|authTag|ciphertext
+        // AES-256-GCM produces 3 pipe-separated parts: iv|ciphertext|authTag
         expect(lean.label.split('|').length).toStrictEqual(3);
         await Item.deleteMany();
     });
