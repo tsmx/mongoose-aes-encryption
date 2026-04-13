@@ -52,10 +52,10 @@ Suppose you have the following Mongoose schema with sensitive fields:
 
 ```javascript
 const schema = new mongoose.Schema({
-    username: { type: String },
-    email:    { type: String },
-    salary:   { type: Number },
-    roles:    { type: [String] }
+    username:     { type: String },
+    email:        { type: String },
+    salary:       { type: Number },
+    phoneNumbers: { type: [String] }
 });
 ```
 
@@ -139,12 +139,12 @@ const doc = await User.findOne({ username: 'alice' }).lean();
 const email    = decrypt(doc.email, { key });                    // → string
 const salary   = parseFloat(decrypt(doc.salary, { key }));       // → number
 const dob      = new Date(decrypt(doc.birthDate, { key }));      // → Date
-const active   = decrypt(doc.mfaEnabled, { key }) === 'true';        // → boolean
+const mfaEnabled = decrypt(doc.mfaEnabled, { key }) === 'true';      // → boolean
 ```
 
 ## Update method compatibility
 
-Encryption is done automatic when a value is assigned through the Mongoose document lifecycle (`new`/`save()` or `findOne()` + mutate + `save()`). Operations that write directly to the database — `updateOne`, `updateMany`, `findOneAndUpdate`, `bulkWrite`, and atomic operators like `$inc`/`$push` — bypass the lifecycle and require manual use of the exported `encrypt` function.
+Encryption is done automatically when a value is assigned through the Mongoose document lifecycle (`new`/`save()` or `findOne()` + mutate + `save()`). Operations that write directly to the database — `updateOne`, `updateMany`, `findOneAndUpdate`, `bulkWrite`, and atomic operators like `$inc`/`$push` — bypass the lifecycle and require manual use of the exported `encrypt` function.
 
 | Operation | Support | Notes |
 |---|---|---|
