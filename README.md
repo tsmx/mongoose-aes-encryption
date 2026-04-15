@@ -42,6 +42,7 @@ MongoDB stores only ciphertext — your application reads and writes plain value
 ✅ AES-256-GCM authenticated encryption  
 ✅ Tamper detection for encrypted values  
 ✅ Works with [nested sub-documents](#inline-nested-sub-documents), [sub-schemas](#separate-sub-schemas), and arrays  
+✅ Zero production dependencies  
 
 ❌ Not full-database encryption  
 ❌ Not a replacement for MongoDB Atlas encryption at rest  
