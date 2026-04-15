@@ -1,0 +1,18 @@
+# Dev tooling
+eslint.config.js
+jest.config.js
+
+# Tests
+test/
+
+# CI / GitHub
+.github/
+
+# Agent/developer guides
+AGENTS.md
+
+# Coverage reports
+coverage/
+
+# Pack artifacts
+*.tgz
