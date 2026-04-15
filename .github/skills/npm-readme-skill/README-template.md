@@ -24,38 +24,56 @@
      Write it as a blockquote. No period at the end. -->
 > {SHORT_TAGLINE}
 
----
+<!-- AI: INTRO PARAGRAPH — 1–2 sentences directly below the tagline (no heading).
+     Expand on the tagline: describe the primary problem solved and the main audience or context.
+     Example: "Secure sensitive fields such as passwords, PII, and tokens while keeping your application logic unchanged." -->
+{INTRO_PARAGRAPH}
 
-## Description
+## Installation
 
-<!-- AI: DESCRIPTION & BENEFITS SECTION
-     Write 1–2 prose sentences that expand on the tagline: explain the primary problem solved
-     and the main audience or context (e.g. "Ideal for pre-processing JSON in AI applications.").
-     Then list the key capability groups as emoji-prefixed bullet clusters.
-     Rules for the bullet list:
-       - Group related functions under one emoji + linked heading anchor (e.g. [utility functions](#utility-functions)).
-       - Each group heading links to its corresponding H3 subsection inside API Reference.
-       - Under each group, add 2-4 sub-bullets naming the concrete capabilities.
-       - Use a distinct emoji per group (🔍 analysis, 🔒 security/obfuscation, ⚡ transformation, ⚙️ config, 🗂️ file / data, etc.).
-     End with an optional link line to companion tools, full docs, or an example project when they exist. -->
+<!-- AI: INSTALLATION SECTION — always include; replace {SCOPE}/{PACKAGE_NAME} with the full package name.
+     Add a peer dependencies line when the library requires the consumer to install additional packages; otherwise remove it. -->
 
-{DESCRIPTION_PARAGRAPH}
+```bash
+npm install {SCOPE}/{PACKAGE_NAME}
+```
 
-{EMOJI} [{CAPABILITY_GROUP_LABEL}](#{CAPABILITY_GROUP_ANCHOR})
-- {capability 1}
-- {capability 2}
-- {capability 3}
+<!-- AI: OPTIONAL peer deps note — remove if none -->
+**Peer dependencies:** {PEER_DEPENDENCY_1}, {PEER_DEPENDENCY_2}
+<!-- END OPTIONAL peer deps note -->
 
-{EMOJI} [{CAPABILITY_GROUP_LABEL}](#{CAPABILITY_GROUP_ANCHOR})
-- {capability 1}
-- {capability 2}
+## Quick Example
 
-See the [API reference](#api-reference) for the full specs and examples.
+<!-- AI: QUICK EXAMPLE SECTION
+     Show the absolute minimum code a developer needs to get started — 3–5 lines maximum.
+     Use CommonJS require() syntax. Pick the single most representative use-case.
+     End with a one-line blockquote callout that states the key benefit (e.g. storage impact, security guarantee). -->
 
-<!-- AI: OPTIONAL companion-tool / docs link — remove if not applicable -->
-> For advanced workflows see the [full documentation]({DOCS_URL}) or the [example project]({EXAMPLE_PROJECT_URL}).
+```javascript
+const {IMPORT_NAME} = require('{SCOPE}/{PACKAGE_NAME}');
 
----
+{QUICK_EXAMPLE_CODE}
+```
+
+> {QUICK_EXAMPLE_CALLOUT}
+
+## What this package does
+
+<!-- AI: WHAT THIS PACKAGE DOES SECTION
+     List what the package DOES with ✅ prefix bullets and optionally what it does NOT do with ❌ prefix bullets.
+     Each item line must end with TWO trailing spaces to ensure correct Markdown line-break rendering.
+     Keep each bullet to one short line. Be specific and concrete — avoid marketing language.
+     Example ✅ items: "✅ Field-level encryption for Mongoose schemas  "
+     Example ❌ items: "❌ Not full-database encryption  " -->
+
+✅ {CAPABILITY_1}  
+✅ {CAPABILITY_2}  
+✅ {CAPABILITY_3}  
+
+<!-- AI: OPTIONAL exclusions block — remove if there are no meaningful NOT-capabilities to state -->
+❌ {EXCLUSION_1}  
+❌ {EXCLUSION_2}  
+<!-- END OPTIONAL exclusions block -->
 
 ## Usage
 
@@ -217,21 +235,6 @@ const result = {moduleExport}.{functionName2}(input);
      Each block below is independently removable.
      Remove the entire block (including the comment guards) when the section does not apply.
      ============================================================ -->
-
-<!-- OPTIONAL: INSTALLATION → REMOVE IF NOT APPLICABLE -->
-## Installation
-
-```bash
-npm install {SCOPE}/{PACKAGE_NAME}
-```
-
-<!-- AI: Add a peer dependencies note when the library requires the consumer to install additional packages -->
-<!-- AI: OPTIONAL peer deps note — remove if none -->
-**Peer dependencies:** {PEER_DEPENDENCY_1}, {PEER_DEPENDENCY_2}
-<!-- END OPTIONAL peer deps note -->
-
-<!-- END OPTIONAL: INSTALLATION -->
-
 
 <!-- OPTIONAL: CONFIGURATION / OPTIONS → REMOVE IF NOT APPLICABLE -->
 ## Options
