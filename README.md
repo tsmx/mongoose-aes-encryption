@@ -304,6 +304,38 @@ AES-256-CBC (available as `algorithm: 'aes-256-cbc'` for backwards compatibility
 
 `null` fields are stored as `null` in MongoDB without encryption. Do not rely on `null` values being confidential.
 
+## Migration
+
+[`mongoose-aes-encryption-migrate`](https://www.npmjs.com/package/mongoose-aes-encryption-migrate) is a companion CLI and programmatic tool for migrating existing MongoDB collections to `mongoose-aes-encryption` safely and idempotently. It processes documents in configurable batches, supports a `--dry-run` mode, and skips documents that are already encrypted so it can be re-run without side effects.
+
+Supported migration sources:
+
+| Source | Package |
+|---|---|
+| Plaintext (no prior encryption) | — |
+| Field-level CBC encryption | `mongoose-field-encryption` |
+| Document-level CBC + HMAC | `mongoose-encryption` |
+
+```bash
+npx mongoose-aes-encryption-migrate --source plaintext --model User
+npx mongoose-aes-encryption-migrate --source mongoose-field-encryption --model User
+npx mongoose-aes-encryption-migrate --source mongoose-encryption --model User
+```
+
+## How it compares
+
+| | `mongoose-field-encryption` | `mongoose-encryption` | `mongoose-aes-encryption` |
+|---|---|---|---|
+| Maintenance status | Active | Last release Nov 2021 | Active |
+| Default algorithm | AES-256-CBC | AES-256-CBC | AES-256-GCM |
+| Tamper detection | No | Via separate HMAC-SHA-512 | GCM auth tag (built-in) |
+| Encryption granularity | Per field | Whole document (`_ct` blob) | Per field |
+| Supported field types | String, Number, Date, Boolean | All (JSON-serialised into blob) | String, Number, Date, Boolean, arrays, nested docs |
+| Mongoose compatibility | 5 / 6 / 7 | 5 / 6 (known bugs in 6) | 6 / 7 / 8 |
+| Schema pollution | Yes — `__enc_*` marker fields | Yes — `_ct`, `_ac` fields | No |
+| `lean()` decrypt helper | No | No | Yes — exported `decrypt()` |
+| Migration tool available | No | No | Yes — [`mongoose-aes-encryption-migrate`](https://www.npmjs.com/package/mongoose-aes-encryption-migrate) |
+
 ## License
 
 [MIT](https://github.com/tsmx/mongoose-aes-encryption/blob/master/LICENSE)
