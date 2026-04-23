@@ -331,7 +331,6 @@ npx mongoose-aes-encryption-migrate --source mongoose-encryption --model User
 | Tamper detection | No | Via separate HMAC-SHA-512 | GCM auth tag (built-in) |
 | Encryption granularity | Per field | Whole document (`_ct` blob) | Per field |
 | Supported field types | String, Number, Date, Boolean | All (JSON-serialised into blob) | String, Number, Date, Boolean, arrays, nested docs |
-| Mongoose compatibility | 5 / 6 / 7 | 5 / 6 (known bugs in 6) | 6 / 7 / 8 |
 | Schema pollution | Yes — `__enc_*` marker fields | Yes — `_ct`, `_ac` fields | No |
 | `lean()` decrypt helper | No | No | Yes — exported `decrypt()` |
 | Migration tool available | No | No | Yes — [`mongoose-aes-encryption-migrate`](https://www.npmjs.com/package/mongoose-aes-encryption-migrate) |
