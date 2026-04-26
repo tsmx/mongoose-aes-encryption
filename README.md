@@ -102,9 +102,9 @@ Encrypted fields inside inline nested objects work automatically.
 const schema = new mongoose.Schema({
     id: { type: String, required: true },
     address: {
-    street: { type: String, encrypted: true },
-    city: { type: String }
-}
+        street: { type: String, encrypted: true },
+        city: { type: String }
+    }
 });
 
 schema.plugin(plugin);
