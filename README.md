@@ -35,6 +35,8 @@ userSchema.plugin(plugin);
 
 MongoDB stores only ciphertext — your application reads and writes plain values.
 
+Already have an existing MongoDB with plaintext data or want to upgrade from another encryption plugin? See the [migration](#migration) section. 
+
 ## What this package does
 
 ✅ Field-level encryption for Mongoose schemas  
@@ -322,7 +324,7 @@ npx mongoose-aes-encryption-migrate --source mongoose-field-encryption --model U
 npx mongoose-aes-encryption-migrate --source mongoose-encryption --model User
 ```
 
-## How it compares
+## How it compares to other popular Mongoose encryption plugins
 
 | | `mongoose-field-encryption` | `mongoose-encryption` | `mongoose-aes-encryption` |
 |---|---|---|---|
