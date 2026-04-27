@@ -43,6 +43,7 @@ Already have an existing MongoDB with plaintext data or want to upgrade from ano
 ✅ Transparent encryption on save, decryption on read  
 ✅ AES-256-GCM authenticated encryption  
 ✅ Tamper detection for encrypted values  
+✅ Equality search on encrypted fields via [searchable fields](#searchable-fields)  
 ✅ Works with [nested sub-documents](#inline-nested-sub-documents), [sub-schemas](#separate-sub-schemas), and arrays  
 ✅ Zero production dependencies — uses Node.js built-in `crypto` module only  
 
@@ -145,6 +146,38 @@ const dob      = new Date(decrypt(doc.birthDate, { key }));      // → Date
 const mfaEnabled = decrypt(doc.mfaEnabled, { key }) === 'true';      // → boolean
 ```
 
+### Searchable fields
+
+By default, encrypted fields cannot be queried — the same plaintext produces different ciphertext on every save (random IV), so `find({ email: 'alice@example.com' })` will never match.
+
+Adding `searchable: true` to a field enables **equality queries** without weakening the encryption. The plugin automatically maintains a `__search_<fieldname>` shadow field in MongoDB containing an HMAC-SHA-256 hash of the plaintext. To query, use `encryptForSearch()` to produce the matching hash:
+
+```javascript
+const createAESPlugin = require('mongoose-aes-encryption');
+const { encryptForSearch } = require('mongoose-aes-encryption');
+
+const plugin = createAESPlugin({ key: process.env.ENCRYPTION_KEY });
+
+const userSchema = new mongoose.Schema({
+    username: { type: String },
+    email:    { type: String, encrypted: true, searchable: true }
+});
+userSchema.plugin(plugin);
+const User = mongoose.model('User', userSchema);
+
+// Save — __search_email is populated automatically
+await new User({ username: 'alice', email: 'alice@example.com' }).save();
+
+// Query — use encryptForSearch() to produce the hash, then find by the shadow field
+const hash = encryptForSearch('alice@example.com', { key: process.env.ENCRYPTION_KEY });
+const user = await User.findOne({ __search_email: hash });
+// user.email === 'alice@example.com' (transparently decrypted)
+```
+
+**How it works:** The HMAC key is derived from your encryption key using HKDF-SHA-256 (`info = 'mongoose-aes-encryption:search'`). The encrypted field itself continues to use a random IV and full AES-256-GCM authenticated encryption — only the shadow hash field is deterministic.
+
+**Security trade-off:** The `__search_<fieldname>` field reveals that two documents share the same plaintext value (frequency analysis is possible). This is the same trade-off as any searchable encryption scheme. Do not use `searchable: true` on high-entropy fields where frequency analysis would be a concern (e.g. free-text fields). It is well-suited for structured identifiers like email addresses, phone numbers, or user IDs.
+
 ## Update method compatibility
 
 Encryption is done automatically when a value is assigned through the Mongoose document lifecycle (`new`/`save()` or `findOne()` + mutate + `save()`). Operations that write directly to the database — `updateOne`, `updateMany`, `findOneAndUpdate`, `bulkWrite`, and atomic operators like `$inc`/`$push` — bypass the lifecycle and require manual use of the exported `encrypt` function.
@@ -230,6 +263,26 @@ const key = process.env.ENCRYPTION_KEY;
 // Pre-encrypt before a $set that bypasses Mongoose middleware
 const cipher = encrypt(String(newPrice), { key });
 await Product.updateOne({ id: 'p-1' }, { $set: { price: cipher } });
+```
+
+### `encryptForSearch(value, options)`
+
+Produces the HMAC-SHA-256 hash that the plugin stores in `__search_<fieldname>` on save. Use the returned string as the query value when searching by an encrypted field.
+
+**Parameters:**
+- `value` (string | number | boolean | Date): Plaintext value to hash.
+- `options` (Object):
+  - `options.key` (string): The same 64-character hex key passed to `createAESPlugin`. **Required.**
+
+**Returns:** `string` — 64-character lowercase hex digest.
+
+**Example:**
+```javascript
+const { encryptForSearch } = require('mongoose-aes-encryption');
+const key = process.env.ENCRYPTION_KEY;
+
+const hash = encryptForSearch('alice@example.com', { key });
+const user = await User.findOne({ __search_email: hash });
 ```
 
 ### `decrypt(value, options)`
@@ -333,7 +386,8 @@ npx mongoose-aes-encryption-migrate --source mongoose-encryption --model User
 | Tamper detection | No | Via separate HMAC-SHA-512 | GCM auth tag (built-in) |
 | Encryption granularity | Per field | Whole document (`_ct` blob) | Per field |
 | Supported field types | String, Number, Date, Boolean | All (JSON-serialised into blob) | String, Number, Date, Boolean, arrays, nested docs |
-| Schema pollution | Yes — `__enc_*` marker fields | Yes — `_ct`, `_ac` fields | No |
+| Equality search on encrypted fields | Yes — deterministic AES-CBC | No | Yes — HMAC shadow field (`__search_*`) |
+| Schema pollution | Yes — `__enc_*` marker fields | Yes — `_ct`, `_ac` fields | Only for searchable fields — `__search_*` shadow fields |
 | `lean()` decrypt helper | No | No | Yes — exported `decrypt()` |
 | Migration tool available | No | No | Yes — [`mongoose-aes-encryption-migrate`](https://www.npmjs.com/package/mongoose-aes-encryption-migrate) |
 
