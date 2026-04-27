@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const createAESPlugin = require('../mongoose-aes-encryption');
-const { encryptForSearch } = require('../mongoose-aes-encryption');
 
 describe('mongoose-aes-encryption searchable fields test suite', () => {
 
@@ -74,78 +73,98 @@ describe('mongoose-aes-encryption searchable fields test suite', () => {
         expect(leanAlice.__search_salary).toStrictEqual(leanBob.__search_salary);
     });
 
-    it('tests that find() by __search_ field returns the correct document', async () => {
-        const hash = encryptForSearch('alice@example.com', { key: testKey });
-        const results = await User.find({ __search_email: hash });
+    it('tests that find() by a searchable field is transparent', async () => {
+        const results = await User.find({ email: 'alice@example.com' });
         expect(results.length).toStrictEqual(1);
         expect(results[0].username).toStrictEqual('alice');
         expect(results[0].email).toStrictEqual('alice@example.com');
     });
 
-    it('tests that find() by __search_ field for a number returns the correct document', async () => {
-        const hash = encryptForSearch(75000, { key: testKey });
-        const results = await User.find({ __search_salary: hash });
-        expect(results.length).toStrictEqual(1);
-        expect(results[0].username).toStrictEqual('alice');
-        expect(results[0].salary).toStrictEqual(75000);
+    it('tests that findOne() by a searchable field is transparent', async () => {
+        const user = await User.findOne({ email: 'alice@example.com' });
+        expect(user).not.toBeNull();
+        expect(user.username).toStrictEqual('alice');
+        expect(user.email).toStrictEqual('alice@example.com');
     });
 
-    it('tests that find() with a wrong value returns no results', async () => {
-        const hash = encryptForSearch('other@example.com', { key: testKey });
-        const results = await User.find({ __search_email: hash });
-        expect(results.length).toStrictEqual(0);
+    it('tests that findOne() by a searchable Number field is transparent', async () => {
+        const user = await User.findOne({ salary: 75000 });
+        expect(user).not.toBeNull();
+        expect(user.username).toStrictEqual('alice');
+        expect(user.salary).toStrictEqual(75000);
     });
 
-    it('tests that updating a document updates the __search_ field', async () => {
+    it('tests that findOne() returns null when the value does not match', async () => {
+        const user = await User.findOne({ email: 'other@example.com' });
+        expect(user).toBeNull();
+    });
+
+    it('tests that countDocuments() by a searchable field is transparent', async () => {
+        const user2 = new User({ username: 'bob', email: 'alice@example.com', salary: 50000 });
+        await user2.save();
+        const count = await User.countDocuments({ email: 'alice@example.com' });
+        expect(count).toStrictEqual(2);
+    });
+
+    it('tests that findOneAndUpdate() by a searchable field is transparent', async () => {
+        const updated = await User.findOneAndUpdate(
+            { email: 'alice@example.com' },
+            { username: 'alice-updated' },
+            { new: true }
+        );
+        expect(updated).not.toBeNull();
+        expect(updated.username).toStrictEqual('alice-updated');
+        expect(updated.email).toStrictEqual('alice@example.com');
+    });
+
+    it('tests that deleteOne() by a searchable field is transparent', async () => {
+        await User.deleteOne({ email: 'alice@example.com' });
+        const count = await User.countDocuments({ username: 'alice' });
+        expect(count).toStrictEqual(0);
+    });
+
+    it('tests that updateOne() by a searchable field is transparent', async () => {
+        await User.updateOne({ email: 'alice@example.com' }, { username: 'alice-updated' });
+        const user = await User.findOne({ email: 'alice@example.com' });
+        expect(user.username).toStrictEqual('alice-updated');
+    });
+
+    it('tests that non-searchable fields in the same query are left untouched', async () => {
+        const user = await User.findOne({ username: 'alice', email: 'alice@example.com' });
+        expect(user).not.toBeNull();
+        expect(user.username).toStrictEqual('alice');
+    });
+
+    it('tests that updating a document updates the __search_ shadow field', async () => {
+        const leanBefore = await User.findOne({ username: 'alice' }).lean();
+        const originalHash = leanBefore.__search_email;
         const user = await User.findOne({ username: 'alice' });
-        const originalHash = (await User.findOne({ username: 'alice' }).lean()).__search_email;
         user.email = 'newalice@example.com';
         await user.save();
-        const lean = await User.findOne({ username: 'alice' }).lean();
-        expect(lean.__search_email).not.toStrictEqual(originalHash);
-        expect(lean.__search_email).toStrictEqual(encryptForSearch('newalice@example.com', { key: testKey }));
+        const leanAfter = await User.findOne({ username: 'alice' }).lean();
+        expect(leanAfter.__search_email).not.toStrictEqual(originalHash);
+        // New value is now findable transparently
+        const found = await User.findOne({ email: 'newalice@example.com' });
+        expect(found).not.toBeNull();
+        expect(found.username).toStrictEqual('alice');
+        // Old value is no longer findable
+        const notFound = await User.findOne({ email: 'alice@example.com' });
+        expect(notFound).toBeNull();
     });
 
-    it('tests that null values result in a null __search_ field', async () => {
+    it('tests that null values result in a null __search_ shadow field', async () => {
         const user = new User({ username: 'bob', email: null, salary: 50000 });
         await user.save();
         const lean = await User.findOne({ username: 'bob' }).lean();
         expect(lean.__search_email).toBeNull();
-        expect(lean.__search_salary).toBeDefined();
     });
 
-    it('tests that encryptForSearch returns a 64-char hex string', () => {
-        const hash = encryptForSearch('test@example.com', { key: testKey });
-        expect(typeof hash).toStrictEqual('string');
-        expect(hash.length).toStrictEqual(64);
-        expect(/^[0-9a-f]{64}$/.test(hash)).toStrictEqual(true);
-    });
-
-    it('tests that encryptForSearch is deterministic for the same value and key', () => {
-        const h1 = encryptForSearch('alice@example.com', { key: testKey });
-        const h2 = encryptForSearch('alice@example.com', { key: testKey });
-        expect(h1).toStrictEqual(h2);
-    });
-
-    it('tests that encryptForSearch throws when key is missing', () => {
-        expect(() => encryptForSearch('value', {}))
-            .toThrow('mongoose-aes-encryption: options.key is required');
-    });
-
-    it('tests that encryptForSearch handles Date values', () => {
-        const d = new Date('2024-01-15T10:00:00.000Z');
-        const h1 = encryptForSearch(d, { key: testKey });
-        const h2 = encryptForSearch(new Date('2024-01-15T10:00:00.000Z'), { key: testKey });
-        expect(h1).toStrictEqual(h2);
-        expect(h1.length).toStrictEqual(64);
-    });
-
-    it('tests that encryptForSearch handles boolean values', () => {
-        const h1 = encryptForSearch(true, { key: testKey });
-        const h2 = encryptForSearch(true, { key: testKey });
-        const h3 = encryptForSearch(false, { key: testKey });
-        expect(h1).toStrictEqual(h2);
-        expect(h1).not.toStrictEqual(h3);
+    it('tests that querying by null on a searchable field is transparent', async () => {
+        const user = new User({ username: 'bob', email: null, salary: 50000 });
+        await user.save();
+        const found = await User.findOne({ email: null });
+        expect(found).not.toBeNull();
+        expect(found.username).toStrictEqual('bob');
     });
 
 });

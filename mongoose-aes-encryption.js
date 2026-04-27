@@ -112,6 +112,32 @@ module.exports = function createAESPlugin(options) {
                     }
                 }
             });
+
+            // Transparently rewrite plain equality conditions on searchable fields
+            // to their __search_<fieldname> shadow-field equivalents before any query
+            // hits the database. Only plain scalar values are rewritten; operator
+            // objects (e.g. { $gt: ... }) are left untouched.
+            const queryHooks = [
+                'find', 'findOne', 'findOneAndUpdate', 'findOneAndDelete',
+                'findOneAndReplace', 'countDocuments', 'count',
+                'deleteOne', 'deleteMany', 'updateOne', 'updateMany'
+            ];
+
+            schema.pre(queryHooks, function() {
+                const filter = this.getFilter();
+                for (const { pathname, originalType } of searchablePaths) {
+                    if (!Object.prototype.hasOwnProperty.call(filter, pathname)) continue;
+                    const val = filter[pathname];
+                    // Skip operator objects like { $gt: x } — only rewrite plain values
+                    if (val !== null && typeof val === 'object' && !Array.isArray(val)) continue;
+                    if (val === null || val === undefined) {
+                        filter[`__search_${pathname}`] = null;
+                    } else {
+                        filter[`__search_${pathname}`] = hashForSearch(toStringForType(originalType, val), searchKey);
+                    }
+                    delete filter[pathname];
+                }
+            });
         }
     };
 };
@@ -125,24 +151,3 @@ function toStringForType(originalType, v) {
 
 module.exports.encrypt = encrypt;
 module.exports.decrypt = decrypt;
-
-/**
- * Produces the search hash for a given plaintext value and key, matching
- * exactly what the plugin stores in __search_<fieldname> on save.
- * Use the returned string as the query value in find({ __search_<field>: result }).
- *
- * @param {string|number|boolean|Date} value  Plaintext value to hash
- * @param {object} options
- * @param {string} options.key  The same 64-char hex key passed to createAESPlugin
- * @returns {string}  64-character hex HMAC-SHA-256 digest
- */
-module.exports.encryptForSearch = function encryptForSearch(value, options) {
-    if (!options || !options.key) {
-        throw new Error('mongoose-aes-encryption: options.key is required');
-    }
-    const sk = deriveSearchKey(parseKey(options.key));
-    if (value instanceof Date) {
-        return hashForSearch(value.toISOString(), sk);
-    }
-    return hashForSearch(String(value), sk);
-};
