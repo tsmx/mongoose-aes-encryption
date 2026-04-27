@@ -9,13 +9,14 @@ Guidance for coding agents and human contributors working in
 
 A Mongoose plugin that adds transparent AES encryption at rest to schema fields.
 Fields marked with `encrypted: true` are automatically encrypted on write and
-decrypted on read. Supports scalar fields, single-element array fields
-(`[String]`, `[Number]`, etc.), inline nested sub-documents, and separate
-sub-schemas.
+decrypted on read. Fields marked with both `encrypted: true` and `searchable: true`
+additionally support transparent equality queries. Supports scalar fields,
+single-element array fields (`[String]`, `[Number]`, etc.), inline nested
+sub-documents, and separate sub-schemas.
 
 - **Language:** Plain JavaScript (CommonJS, no TypeScript, no build step)
 - **Source files:** `mongoose-aes-encryption.js` (main plugin) + `lib/crypto.js` (inlined AES helpers)
-- **Tests:** `test/` — 6 files, Jest + in-memory MongoDB
+- **Tests:** `test/` — 7 files, Jest + in-memory MongoDB
 
 ---
 
@@ -38,6 +39,7 @@ npx jest test/encrypted-number.test.js
 npx jest test/encrypted-date.test.js
 npx jest test/encrypted-boolean.test.js
 npx jest test/complex.test.js
+npx jest test/searchable.test.js
 
 # Run a single test by name
 npx jest -t "tests a successful document creation"
@@ -121,6 +123,35 @@ Supported algorithms: `'aes-256-gcm'` (default) and `'aes-256-cbc'`.
 pair from `makeGetterSetter()`. The `set` hook converts the native value to a
 string and encrypts it; `get` decrypts and converts back.
 
+### Searchable fields
+Fields marked with both `encrypted: true` and `searchable: true` support
+transparent equality queries. The plugin:
+
+1. Adds a `__search_<fieldname>: String` shadow path to the schema.
+2. Registers a `pre('save')` hook that computes
+   `HMAC-SHA-256(searchKey, plaintextString)` and stores the hex digest in the
+   shadow field. For array fields the digests are joined with `|`.
+3. Registers `pre([...queryHooks])` middleware that inspects the query filter
+   before every read/write operation. Any plain equality condition on a searchable
+   field (i.e. `{ field: value }`, not an operator object like `{ $gt: x }`) is
+   rewritten to `{ __search_field: hmacHex }` transparently.
+
+The search key is derived once at plugin init via
+`deriveSearchKey(masterKeyBuf)` → `HKDF-SHA-256(masterKey, salt='', info='mongoose-aes-encryption:search', 32 bytes)`.
+The encrypted field itself is unchanged — random IV, full AES-256-GCM.
+
+Query hooks covered by the middleware:
+`find`, `findOne`, `findOneAndUpdate`, `findOneAndDelete`, `findOneAndReplace`,
+`countDocuments`, `count`, `deleteOne`, `deleteMany`, `updateOne`, `updateMany`.
+
+### `lib/crypto.js` internals
+In addition to `parseKey`, `encrypt`, and `decrypt`, this module exports two
+internal helpers used exclusively by the searchable-fields feature:
+- `deriveSearchKey(masterKeyBuf)` — returns a 32-byte `Buffer` via `hkdfSync`
+- `hashForSearch(text, searchKeyBuf)` — returns a 64-char lowercase hex HMAC-SHA-256 digest
+
+Do not call these from outside `mongoose-aes-encryption.js`.
+
 ### Type conversion table
 | `originalType` | before encrypt (`toString`) | after decrypt (`fromString`) |
 |---|---|---|
@@ -155,6 +186,7 @@ decrypt(doc.boolField, { key }) === 'true';         // Boolean
 - `test/encrypted-date.test.js` — scalar `Date` + `[Date]` array
 - `test/encrypted-boolean.test.js` — scalar `Boolean` + `[Boolean]` array
 - `test/complex.test.js` — mixed types, inline nested sub-documents, separate sub-schemas
+- `test/searchable.test.js` — `searchable: true` scalar and array fields, shadow-field population, transparent query rewriting across all supported query hooks
 
 ### Suite structure
 ```js
