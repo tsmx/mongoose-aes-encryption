@@ -110,7 +110,7 @@ describe('mongoose-aes-encryption searchable fields test suite', () => {
         const updated = await User.findOneAndUpdate(
             { email: 'alice@example.com' },
             { username: 'alice-updated' },
-            { new: true }
+            { returnDocument: 'after' }
         );
         expect(updated).not.toBeNull();
         expect(updated.username).toStrictEqual('alice-updated');
